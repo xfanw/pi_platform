@@ -1,0 +1,46 @@
+<div class="modal" id="loader-modal" role="dialog" aria-modal="true">
+    <div class="loader-dialog">
+        <div class="loader-card">
+            <div class="loader"></div>
+            <div class="loader-title">Processing...</div>
+            <h3 id="loader-modal-text" class="bg-white text-center" style="display:none">
+                <span class="loader-text p-3">This action takes time. Do not Close or Refresh current page.</span>
+            </h3>
+        </div>
+    </div>
+</div>
+
+<script>
+    let message_type = "";
+    let message_content = "";
+    console.log("{{ messages }}");
+    
+    {% for message in messages %}
+        {% comment %} console.log( "{{ message }}") {% endcomment %}
+        message_type = "{{ message.tags }}";
+        message_content = "{{ message }}";
+    {% endfor %}
+
+    $(function() {
+        if (message_type!=='' ){
+            if (message_type == "error") {                
+                show_top_right_error(message_content);
+            } else if (message_type == "success") {
+                show_top_right_success(message_content);
+            } else{
+                show_json_message(message_type, message_content);
+            }
+        }
+    });
+</script>
+
+<div id='json-message' style='display:none'>
+    <div class="message-box-bottom">
+        <div id='json_message_status'>
+            <span onclick="hide_json_message()" class="close"><i class='fa fa-xmark'></i></span>
+            <div class="text-center">
+                <p id='json_message_msg'></p>
+            </div>
+        </div>
+    </div>
+</div>

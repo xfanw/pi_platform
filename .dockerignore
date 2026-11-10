@@ -1,0 +1,15 @@
+.git
+.env
+.venv
+venv
+__pycache__
+*.py[cod]
+*.db
+*.sqlite*
+*.zip
+.DS_Store
+staticfiles
+backups
+media
+.coverage
+htmlcov

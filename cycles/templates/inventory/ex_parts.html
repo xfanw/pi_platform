@@ -1,0 +1,83 @@
+{% extends "core/base.html" %}
+{% block title %}Exclude PN List | PI Platform{% endblock %}
+{% block body %}
+<h1>Exclude PN List</h1>
+<p class="page-sub">P/Ns excluded from counting for the current PI, for one SAP Location or ALL. Manual add appends one line; template upload replaces the list after full validation.</p>
+
+{% if not cycle_ref %}
+  <section class="tag-range-context row disabled">
+    <div class='col-md-4'><span>Current PI only</span><h2>No Open PI Cycle</h2></div>
+    <div class='col-md-7'><h6 class='fw-bold text-danger'>Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Exclude PN setup.</h6></div>
+  </section>
+
+{% else %}
+  <section class="tag-range-context">
+    <div class='col-md-4'><span>Current PI only</span><h2>{{ cycle_ref.name }}</h2></div>
+    <div class='col-md-7'><h6 class='fw-bold'>P/Ns must already exist in the <a href="{% url 'cycles:part_setup' %}">PN List</a>.</h6></div>
+  </section>
+
+{% if may_change %}
+<section class="split book-actions">
+  <div class="pane">
+    <div class="pane-title">Manual add (appends)</div>
+    <form method="post" class="frow" action="{% url 'cycles:ex_part_create' %}">
+      {% csrf_token %}
+      <div><label>P/N</label><input name="part_number" maxlength="80" required></div>
+      <div><label>SAP Location</label>
+        <select name="sap_location" required>
+          <option value="ALL">ALL</option>
+          {% for loc in sap_locations %}<option value="{{ loc.code }}">{{ loc.code }}{% if loc.department %} - {{ loc.department }}{% endif %}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field-grow"><label>Reason</label><input name="reason" maxlength="240" required></div>
+      <button class='btn btn-sm btn-primary' type="submit">Add Exclusion</button>
+    </form>
+  </div>
+  <div class="pane upload-pane">
+    <div class="pane-title">Upload via template (replaces list)</div>
+    <form method="post" enctype="multipart/form-data" class="frow" action="{% url 'cycles:ex_part_file_upload' %}">
+      {% csrf_token %}
+      <div><label>Completed template (.xlsx)</label><input type="file" name="ex_part_file" accept=".xlsx" required></div>
+      <button class='btn btn-sm btn-primary' type="submit">Upload &amp; Validate</button>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'cycles:ex_part_template_download' %}">Download template</a>
+    </form>
+    <p class="mut">Use ALL in the SAP Location column to exclude a P/N in every SAP Location. Confirming an upload replaces the current exclusions.</p>
+  </div>
+</section>
+{% endif %}
+
+<section class="card search-card">
+  <div class="search-title">Search Exclude PN List</div>
+  <form method="get" class="frow">
+    <div class="field-grow"><label>PN, description or reason contains</label><input type="search" name="search" value="{{ search }}" placeholder="Enter search text"></div>
+    <div><label>SAP Location</label>
+      <select name="sap_location">
+        <option value="">Any</option>
+        <option value="ALL" {% if sap_location_filter == 'ALL' %}selected{% endif %}>ALL</option>
+        {% for loc in sap_locations %}<option value="{{ loc.code }}" {% if loc.code == sap_location_filter %}selected{% endif %}>{{ loc.code }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class='btn btn-sm btn-primary' type="submit">Search Records</button>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'cycles:ex_part_setup' %}">Clear</a>
+  </form>
+</section>
+
+<section class="card">
+  <div class="table-section-head"><h2>Excluded P/Ns</h2></div>
+  <div class="scroll"><table class="book-table">
+    <thead><tr><th>P/N</th><th>Description</th><th>SAP Location</th><th>Reason</th><th>Added by</th><th>Added at</th></tr></thead>
+    <tbody>{% for item in ex_part_lines %}
+      <tr>
+        <td><b>{{ item.part.part_number }}</b></td>
+        <td>{{ item.part.description }}</td>
+        <td><span class='chip'>{{ item.sap_location.code|default:"ALL" }}</span></td>
+        <td>{{ item.reason }}</td>
+        <td class="mut">{{ item.created_by }}</td>
+        <td class="mut">{{ item.created_at|date:"Y-m-d H:i" }}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6" class="mut">{% if search or sap_location_filter %}No excluded P/Ns match this search.{% else %}No P/Ns are excluded for this PI.{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% endblock %}

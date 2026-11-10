@@ -1,0 +1,70 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Counter &amp; Data Entry | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading">
+  <div>
+    <h1>Counter &amp; Data Entry</h1>
+    <p class="page-sub">Maintain the people roster used to identify who performed each count.</p>
+  </div>
+  {% comment %} {% if portal_can_manage_users %}<div class="page-actions"><a class="btn ghost" href="{% url 'access_control:onboarding' %}">Bulk People Onboarding</a><a class="btn ghost" href="{% url 'access_control:user-list' %}">Manage Login Access</a></div>{% endif %} {% endcomment %}
+</div>
+
+<section class="card count-channel-note">
+  <b>Roster identity is not system access</b>
+  <span>Counters can be selected on Count Intake without receiving a login. Data Entry users who operate the system must also be created under User Management and assigned scoped Data Entry access.</span>
+</section>
+
+<section class="card setup-primary">
+  <div class="pane-title">Add person to roster</div>
+  <form method="post" class="frow" id="counter-roster-form">
+    {% csrf_token %}<input type="hidden" name="action" value="add">
+    <div><label>Employee ID</label><input name="employee_id" maxlength="80" required placeholder="123456"></div>
+    <div class="field-wide"><label>Display Name</label><input name="display_name" maxlength="160" required placeholder="Counter name"></div>
+    <div class="field-wide"><label>Email <span class="optional">optional</span></label><input name="email" type="email" maxlength="254"></div>
+    <div><label>Ownership <span class="optional">optional</span></label><select name="department_id" id="roster-department"><option value="">All / not assigned</option>{% for item in departments %}<option value="{{ item.pk }}">{{ item.name }}</option>{% endfor %}</select></div>
+    <div><label>SAP Location <span class="optional">optional</span></label><select name="sap_location_id" id="roster-sap"><option value="">All / not assigned</option>{% for item in sap_locations %}<option value="{{ item.pk }}" data-department="{{ item.department_id }}">{{ item.code }} · {{ item.department.name }}</option>{% endfor %}</select></div>
+    <button type="submit">Add Person</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="table-section-head">
+    <div><h2>People roster</h2><p class="mut">Deactivating a person prevents new selection while preserving attribution on existing Count Records.</p></div>
+    <form method="get" class="frow compact-form"><div><label>Search</label><input name="q" value="{{ search }}" placeholder="ID, name, email, ownership or SAP"></div><button type="submit">Search</button>{% if search %}<a class="btn ghost" href="{% url 'portal:counter-roster' %}">Clear</a>{% endif %}</form>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Employee ID</th><th>Name</th><th>Ownership</th><th>SAP Location</th><th>Email</th><th>Status</th><th>Updated</th><th>Action</th></tr></thead>
+    <tbody>
+    {% for item in roster %}
+      <tr>
+        <td class="mono">{{ item.employee_id }}</td><td><b>{{ item.display_name }}</b></td>
+        <td>{{ item.department.name|default:"All / not assigned" }}</td><td>{{ item.sap_location.code|default:"All / not assigned" }}</td>
+        <td>{{ item.email|default:"—" }}</td>
+        <td>{% if item.is_active %}<span class="cyclechip open">Active</span>{% else %}<span class="cyclechip closed">Inactive</span>{% endif %}</td>
+        <td class="mut">{{ item.updated_at|date:"Y-m-d H:i" }}{% if item.updated_by %} · {{ item.updated_by.username }}{% endif %}</td>
+        <td><form method="post">{% csrf_token %}<input type="hidden" name="action" value="status"><input type="hidden" name="roster_id" value="{{ item.pk }}"><input type="hidden" name="is_active" value="{% if item.is_active %}0{% else %}1{% endif %}"><button class="{% if item.is_active %}danger ghost{% endif %}" type="submit">{% if item.is_active %}Deactivate{% else %}Activate{% endif %}</button></form></td>
+      </tr>
+    {% empty %}<tr><td colspan="8" class="mut">No roster people match this Plant and search.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const department = document.getElementById('roster-department');
+  const sap = document.getElementById('roster-sap');
+  if (!department || !sap) return;
+  const refresh = () => {
+    [...sap.options].forEach((option, index) => {
+      if (!index) return;
+      option.hidden = Boolean(department.value) && option.dataset.department !== department.value;
+    });
+    if (sap.selectedOptions[0]?.hidden) sap.value = '';
+  };
+  department.addEventListener('change', refresh);
+  refresh();
+})();
+</script>
+{% endblock %}

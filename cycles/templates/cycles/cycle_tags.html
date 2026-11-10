@@ -1,0 +1,80 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Tag Ranges | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading"><div><h1>Tag Ranges</h1><p class="page-sub">Assign tag ranges to the current PI for {{ plant_.ode }}.</p></div></div>
+
+<section class="tag-range-context {% if not cycle_ref %}disabled{% endif %} row">
+<div class='col-md-4'><span>Current PI only</span><h2>{% if cycle_ref %}{{ cycle_ref.name }}{% else %}No Open PI Cycle{% endif %}</h2></div>
+<div class='col-md-7'><h6 class='fw-bold {% if not cycle_ref %}text-danger{% else %} {% endif %}'>{% if cycle_ref %}These ranges validate tag entry only for this PI and are never carried to the next PI.{% else %}Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Tag Range setup. {% endif %}</h6>
+</div>
+</section>
+
+{% if cycle_ref %}
+<section class="card location-entry-panel tag-entry-panel">
+  <div class="pane">
+    <div class="pane-title">Add Tag Range</div>
+    <form method="post" class="frow compact-form row" action="{% url 'cycles:tag_create' %}">{% csrf_token %}
+    <div class="row">
+      <div class='col-md-2'><label>SAP Location</label>
+        <select id="sap_location" name="sap_location" class='form-control'><option value='' selected">-- Select --</option>
+        {% for item in cycle_sap_locations %}
+          <option value="{{ item.0 }}">{{ item.1 }} / {{ item.0 }}</option>
+        {% endfor %}
+        </select>
+      </div>
+      <div class='col-md-2'><label>Location</label>
+        <select class='form-control' id="tag-add-location" name='location' required disabled>
+          <option value="" disabled selected>Select SAP Location first</option>
+        </select>
+      </div>
+      <div class='col-md-2'><label>Sub-location</label>
+        <select class='form-control' id="tag-add-sub" name="sub_location" required disabled>
+          <option value="" disabled selected>Select Location first</option>
+        </select>
+      </div>
+      <div class='col-md-2'><label>Start</label>
+        <input name="start_number" id='start_number' type="number" min="0" required disabled>
+      </div>
+      <div class='col-md-2'><label>End</label>
+        <input name="end_number" id='end_number' type="number" min="0" required disabled>
+      </div>
+      <div class='col-md-2'><label>Action</label>
+        <button class='btn btn-sm btn-primary' type="submit" disabled id="add-range-button">Add Range</button>
+      </div>
+    </div>
+  </form>
+  </div>
+</section>
+<section class="split location-entry-panel tag-entry-panel">
+  <div class="pane upload-pane"><div class="pane-title">Upload Tag Ranges</div>
+  <form method="post" enctype="multipart/form-data" class="frow compact-form" action="{% url 'cycles:tag_file_upload' %}">{% csrf_token %}
+    <div class="file-field">
+    <label>Completed .xlsx</label><input type="file" name="upload_tag_range" accept=".xlsx" required></div>
+    <button class='btn btn-primary' type="submit">Upload</button>
+    <a class="btn btn-outline-primary" href="{% url 'cycles:tag_template_download' %}">Download Template</a>
+  </form>
+  <p class="mut">Exact duplicates are skipped. Any range that would overlap with a Tag Number anywhere will be rejected.</p></div>
+</section>
+
+<section class="card search-card location-search-card"><form method="get" class="location-filter-form tag-filter-form">
+  <div><label for="tag-search">Search</label><input id="tag-search" type="search" name="search" value="{{ search|default:'' }}" placeholder="SAP Location, Location or Sub-location"></div>
+  <div><label for="tag-sap">SAP Location</label><input id="tag-sap" name="sap_location" value="{{ sap_location_filter|default:'' }}"></div>
+  <div><label for="tag-parent">Location</label><input id="tag-parent" name="location" value="{{ location_filter|default:'' }}"></div>
+  <div><label for="tag-sub">Sub-location</label><input id="tag-sub" name="sub_location" value="{{ sub_location_filter|default:'' }}"></div>
+  <div class="filter-actions"><button class='btn btn-sm btn-primary' type="submit">Apply</button><a class="btn btn-sm btn-outline-primary" href="{% url 'cycles:tag_setup' %}">Clear</a></div>
+</form></section>
+
+<section class="card location-data-card tag-range-card"><div class="table-section-head"><div><h2>Current PI Tag Ranges</h2><p class="mut">A range cannot be removed after an accepted Count Record uses one of its tags.</p></div><span class="record-count">{{ tag_ranges|length }} range{{ tag_ranges|length|pluralize }}</span></div><div class="scroll"><table class="location-table"><thead><tr><th>SAP Location</th><th>Location</th><th>Sub-location</th><th class="num">Start</th><th class="num">End</th><th class="num">Tags</th><th>Action</th></tr></thead><tbody>
+{% for item in tag_ranges %}<tr><td><b>{{ item.sap_location.code }}</b></td><td>{{ item.physical_location.name }}</td><td>{{ item.sub_location.name }}</td><td class="num">{{ item.start_number }}</td><td class="num">{{ item.end_number }}</td><td class="num">{{ item.used_count}}/ {{ item.tag_count }}</td><td><form method="post" onsubmit="return confirm('Remove this unused Tag Range?');">{% csrf_token %}<input type="hidden" name="action" value="delete_tag_range"><input type="hidden" name="tag_range_id" value="{{ item.pk }}"><button class="btn danger small" type="submit">Remove</button></form></td></tr>
+{% empty %}<tr><td colspan="7" class="mut">No Tag Ranges match the current search and filters.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+let location_list = {{cycle_physical_locations|safe}}
+let sub_location_list = {{cycle_sub_locations|safe}}
+</script>
+<script src="{% static 'cycles/cycle_tags.js' %}?v=1.0"></script>
+{% endblock %}

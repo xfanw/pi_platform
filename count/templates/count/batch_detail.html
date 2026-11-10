@@ -1,0 +1,27 @@
+{% extends "portal/base.html" %}
+{% block title %}Count Batch | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading"><div><h1>{{ batch.get_source_display }} Batch</h1><p class="page-sub mono">{{ batch.batch_id }}</p></div><a class="btn ghost" href="{% if batch.source == 'WMS' %}{% url 'portal:count-wms' %}{% elif batch.source == 'VIRTUAL_TAG' %}{% url 'portal:count-virtual-tag' %}{% else %}{% url 'portal:count-upload' %}{% endif %}">Back to Batches</a></div>
+<section class="batch-kpis">
+  <div class="kpi"><span class="lbl">Status</span><b class="val small">{{ batch.get_status_display }}</b></div><div class="kpi"><span class="lbl">Rows</span><b class="val">{{ batch.row_count }}</b></div><div class="kpi"><span class="lbl">Accepted</span><b class="val">{{ batch.accepted_count }}</b></div><div class="kpi"><span class="lbl">Pending</span><b class="val">{{ batch.pending_count }}</b></div><div class="kpi"><span class="lbl">Errors</span><b class="val {% if batch.rejected_count %}neg{% endif %}">{{ batch.rejected_count }}</b></div>
+</section>
+<section class="card batch-meta"><div><b>{{ batch.source_filename|default:'No file name' }}</b><br><span class="mut">{{ batch.note|default:'No batch note' }} · {{ batch.created_at|date:'Y-m-d H:i' }} · {{ batch.created_by.username|default:'system' }}</span></div>{% if batch.status != 'REVERSED' %}<form method="post" action="{% url 'portal:count-batch-reverse' batch.batch_id %}" onsubmit="return confirm('Reverse this entire batch? Its accepted records will stop affecting Count Results.');">{% csrf_token %}<input type="hidden" name="row_version" value="{{ batch.row_version }}"><button class="danger" type="submit">Reverse Batch</button></form>{% endif %}</section>
+{% if batch.status == 'REVERSED' %}<div class="flash warning">This batch is reversed. Its original rows remain visible here for audit history, but they no longer affect Count Results or variance.</div>{% endif %}
+{% if batch.error_details %}
+<section class="card">
+  <div class="table-section-head"><div><h2>Upload Errors</h2><span class="mut">These rows were rejected and did not enter Count Results or Pending Station.</span></div></div>
+  <div class="batch-error-list">{% for error in batch.error_details %}<div class="flash error">{{ error }}</div>{% endfor %}</div>
+</section>
+{% endif %}
+<section class="card">
+  <div class="table-section-head"><div><h2>Accepted Count Records</h2><span class="mut">Corrections require independent review; the original record is never overwritten.</span></div></div>
+  <div class="scroll batch-detail-scroll"><table><thead><tr><th>Record ID</th><th>SAP</th><th>Location / Sub</th><th>Tag</th><th>Original P/N</th><th>Current P/N</th><th class="num">Original Qty</th><th class="num">Count Qty</th><th>Counter</th><th>Correction</th></tr></thead><tbody>
+    {% for item in records %}<tr><td class="mono">{{ item.record_id|stringformat:'s'|slice:':8' }}</td><td>{{ item.sap_location.code }}</td><td>{{ item.physical_location.name|default:'—' }}{% if item.sub_location %}<br><span class="mut">{{ item.sub_location.name }}</span>{% endif %}</td><td>{{ item.tag_number|default:'—' }}</td><td>{{ item.part.part_number }}</td><td>{% if item.has_applied_correction %}<span class="chip">Corrected</span> {% endif %}{{ item.effective_part_number }}</td><td class="num">{{ item.quantity }}</td><td class="num">{{ item.effective_quantity }}</td><td>{{ item.counter_name|default:'—' }}</td><td>{% if batch.status == 'REVERSED' %}<span class="mut">Inactive</span>{% else %}<details><summary>Edit result</summary><form method="post" action="{% url 'portal:count-record-correct' item.record_id %}" class="mini-correction-form">{% csrf_token %}<label>Correct P/N</label><input name="corrected_part_number" value="{{ item.effective_part_number }}"><label>Correct Qty</label><input name="corrected_quantity" type="number" min="0" step="0.0001" value="{{ item.effective_quantity }}"><label>Reason</label><input name="reason_code" value="Batch result correction" required><label>Comment</label><input name="comment" required><button type="submit">Submit Correction</button></form></details>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="10" class="mut">No accepted records in this batch.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+<section class="card">
+  <div class="table-section-head"><div><h2>Pending / Unknown P/N</h2><span class="mut">Resolve these records in Pending Station.</span></div><a class="btn ghost" href="{% url 'portal:pending-station' %}">Open Pending Station</a></div>
+  <div class="scroll"><table><thead><tr><th>ID</th><th>Status</th><th>SAP</th><th>Location / Sub</th><th>Tag</th><th>Raw P/N</th><th class="num">Qty</th><th>Counter</th></tr></thead><tbody>{% for item in pending %}<tr><td class="mono">{{ item.exception_id|stringformat:'s'|slice:':8' }}</td><td>{{ item.get_status_display }}</td><td>{{ item.sap_location.code }}</td><td>{{ item.physical_location.name|default:'—' }}{% if item.sub_location %} / {{ item.sub_location.name }}{% endif %}</td><td>{{ item.tag_number|default:'—' }}</td><td>{{ item.raw_part_number }}</td><td class="num">{{ item.quantity }}</td><td>{{ item.counter_name|default:'—' }}</td></tr>{% empty %}<tr><td colspan="8" class="mut">No pending records in this batch.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

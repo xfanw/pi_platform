@@ -1,0 +1,27 @@
+{% extends "portal/base.html" %}
+{% block title %}Count Results | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading"><div><h1>Count Results</h1><p class="page-sub">Accepted count records for the current PI. Approved corrections are overlaid while the original Count Record remains immutable.</p></div></div>
+
+<section class="card search-card">
+  <div class="search-title">Filter Count Results</div>
+  <form method="get" class="frow">
+    <div class="field-grow"><label>Search</label><input type="search" name="search" value="{{ search }}" placeholder="P/N, description, location, tag or counter"></div>
+    <div><label>SAP Location</label><select name="sap_location"><option value="">All</option>{% for item in sap_locations %}<option value="{{ item.code }}" {% if sap_filter == item.code %}selected{% endif %}>{{ item.code }}</option>{% endfor %}</select></div>
+    <div><label>Source</label><select name="source"><option value="">All</option>{% for value,label in source_choices %}<option value="{{ value }}" {% if source_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <button type="submit">Apply</button>
+    {% if search or sap_filter or source_filter %}<a class="btn ghost" href="{% url 'portal:count-results' %}">Clear</a>{% endif %}
+    <button class="btn ghost" type="submit" name="export" value="1">Export to Excel</button>
+  </form>
+</section>
+
+<section class="card count-results-card">
+  <div class="table-section-head"><div><h2>Count Result Records</h2><span class="mut">{{ total }} record(s){% if total > 500 %} · showing first 500; Excel export contains every filtered record{% endif %}</span></div></div>
+  <div class="scroll count-results-scroll"><table class="count-results-table">
+    <thead><tr><th>P/N</th><th>Description</th><th>Ownership</th><th>SAP</th><th>Location</th><th>Sub Location</th><th>Tag</th><th class="num">Qty</th><th>Counter</th><th>Source</th><th>Entered By</th><th>At</th><th>Record ID</th></tr></thead>
+    <tbody>{% for item in rows %}<tr>
+      <td><b>{{ item.effective_part_number }}</b>{% if item.has_applied_correction %}<span class="chip corrected">Corrected</span>{% endif %}</td><td class="desc" title="{{ item.effective_description }}">{{ item.effective_description }}</td><td>{{ item.sap_location.department.name }}</td><td><span class="chip">{{ item.sap_location.code }}</span></td><td>{{ item.physical_location.name|default:"—" }}</td><td>{{ item.sub_location.name|default:"—" }}</td><td class="mono">{{ item.tag_number|default:"—" }}</td><td class="num">{{ item.effective_quantity|floatformat:-4 }}</td><td>{{ item.counter_name|default:"—" }}</td><td>{{ item.get_source_display }}</td><td>{{ item.entered_by.username|default:"system" }}</td><td class="mut">{{ item.entered_at|date:"Y-m-d H:i" }}</td><td class="mono mut" title="{{ item.record_id }}">{{ item.record_id|stringformat:"s"|slice:":8" }}</td>
+    </tr>{% empty %}<tr><td colspan="13" class="mut">No accepted Count Results match these filters.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}
