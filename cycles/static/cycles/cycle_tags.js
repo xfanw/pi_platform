@@ -93,3 +93,22 @@ $("#tag-add-sub").on("change", function () {
         $("#add-range-button").prop("disabled", false);
     }
 });
+
+function confirm_remove(range_id) {
+    Swal.fire({
+        title: "Are you sure?",
+        text: "Remove this unused Tag Range?",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: `Create`,
+        allowOutsideClick: false,
+        didOpen: () => {
+            swal_delay_confirm();
+        },
+    }).then((result) => {
+        if (result.isConfirmed) {
+            location.href = "/cycles/tag_range_remove/" + range_id;
+        }
+    });
+}

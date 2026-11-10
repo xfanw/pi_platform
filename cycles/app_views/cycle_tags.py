@@ -13,6 +13,7 @@ from cycles.models import (
 PERMISSION = "Setting.Tag Range"
 
 
+@login_required
 def tag_setup(request):
     curr_user = request.user
     context = get_basic_info(request)
@@ -90,6 +91,7 @@ def tag_setup(request):
     return render(request, "cycles/cycle_tags.html", context)
 
 
+@login_required
 def tag_create(request):
     curr_user = request.user
     context = get_basic_info(request)
@@ -146,9 +148,6 @@ def tag_create(request):
         for existing_item in existing_range[:5]:
             msg += f"<tr><td>{existing_item.sap_location.code}</td><td>{existing_item.physical_location.name}</td><td>{existing_item.sub_location.name}</td><td>{existing_item.start_number}</td><td>{existing_item.end_number}</td></tr>"
         msg += "</table>"
-
-        latest_existing_range = existing_range.first()
-        msg += f"<br><br>Next Available Tag Start Number is: <b>{latest_existing_range.end_number + 1}</b>"
         messages.error(request, mark_safe(f"Overlapping tag range exists.<br><br>{msg}"))
         return redirect("cycles:tag_setup")
 
@@ -167,6 +166,30 @@ def tag_create(request):
     )
 
     messages.success(request, f"Tag range {start_number} {end_number} created successfully.")
+    return redirect("cycles:tag_setup")
+
+
+@login_required
+def tag_range_remove(request, range_id):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to create tag ranges. {msg}"))
+        return redirect("cycles:tag_setup")
+
+    existing_range = CycleTagRange.objects.filter(id=range_id)
+    if not existing_range.exists():
+        messages.error(request, "Tag range does NOT exist.")
+        return redirect("cycles:tag_setup")
+
+    existing_range.delete()
+    messages.success(request, "Tag range has been successfully removed.")
     return redirect("cycles:tag_setup")
 
 

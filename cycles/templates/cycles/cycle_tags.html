@@ -66,7 +66,7 @@
 </form></section>
 
 <section class="card location-data-card tag-range-card"><div class="table-section-head"><div><h2>Current PI Tag Ranges</h2><p class="mut">A range cannot be removed after an accepted Count Record uses one of its tags.</p></div><span class="record-count">{{ tag_ranges|length }} range{{ tag_ranges|length|pluralize }}</span></div><div class="scroll"><table class="location-table"><thead><tr><th>SAP Location</th><th>Location</th><th>Sub-location</th><th class="num">Start</th><th class="num">End</th><th class="num">Tags</th><th>Action</th></tr></thead><tbody>
-{% for item in tag_ranges %}<tr><td><b>{{ item.sap_location.code }}</b></td><td>{{ item.physical_location.name }}</td><td>{{ item.sub_location.name }}</td><td class="num">{{ item.start_number }}</td><td class="num">{{ item.end_number }}</td><td class="num">{{ item.used_count}}/ {{ item.tag_count }}</td><td><form method="post" onsubmit="return confirm('Remove this unused Tag Range?');">{% csrf_token %}<input type="hidden" name="action" value="delete_tag_range"><input type="hidden" name="tag_range_id" value="{{ item.pk }}"><button class="btn danger small" type="submit">Remove</button></form></td></tr>
+{% for item in tag_ranges %}<tr><td><b>{{ item.sap_location.code }}</b></td><td>{{ item.physical_location.name }}</td><td>{{ item.sub_location.name }}</td><td class="num">{{ item.start_number }}</td><td class="num">{{ item.end_number }}</td><td class="num">{{ item.used_count}}/ {{ item.tag_count }}</td><td><button class="btn danger small" type="button" onclick="confirm_remove('{{ item.pk }}')">Remove</button></td></tr>
 {% empty %}<tr><td colspan="7" class="mut">No Tag Ranges match the current search and filters.</td></tr>{% endfor %}
 </tbody></table></div></section>
 {% endif %}

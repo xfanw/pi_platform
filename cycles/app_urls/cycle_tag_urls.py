@@ -5,6 +5,7 @@ from cycles.app_views.cycle_tags import *
 urlpatterns = [
     path("tag_setup", tag_setup, name="tag_setup"),
     path("tag_create", tag_create, name="tag_create"),
+    path("tag_range_remove/<int:range_id>", tag_range_remove, name="tag_range_remove"),
 ]
 
 urlpatterns += [
