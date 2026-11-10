@@ -136,7 +136,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
 
 # Required for HTTPS behind Nginx
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-CSRF_TRUSTED_ORIGINS = ["https://pi_platform.com", "https://127.0.0.1"]
+# CSRF_TRUSTED_ORIGINS = ["https://pi_platform.com", "https://127.0.0.1"]
 
 
 # Email
