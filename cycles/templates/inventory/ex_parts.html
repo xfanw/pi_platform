@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 {% block title %}Exclude PN List | PI Platform{% endblock %}
 {% block body %}
 <h1>Exclude PN List</h1>
@@ -52,7 +53,6 @@
     <div class="field-grow"><label>PN, description or reason contains</label><input type="search" name="search" value="{{ search }}" placeholder="Enter search text"></div>
     <div><label>SAP Location</label>
       <select name="sap_location">
-        <option value="">Any</option>
         <option value="ALL" {% if sap_location_filter == 'ALL' %}selected{% endif %}>ALL</option>
         {% for loc in sap_locations %}<option value="{{ loc.code }}" {% if loc.code == sap_location_filter %}selected{% endif %}>{{ loc.code }}</option>{% endfor %}
       </select>
@@ -65,7 +65,7 @@
 <section class="card">
   <div class="table-section-head"><h2>Excluded P/Ns</h2></div>
   <div class="scroll"><table class="book-table">
-    <thead><tr><th>P/N</th><th>Description</th><th>SAP Location</th><th>Reason</th><th>Added by</th><th>Added at</th></tr></thead>
+    <thead><tr><th>P/N</th><th>Description</th><th>SAP Location</th><th>Reason</th><th>Added by</th><th>Added at</th><th>Actions</th></tr></thead>
     <tbody>{% for item in ex_part_lines %}
       <tr>
         <td><b>{{ item.part.part_number }}</b></td>
@@ -74,10 +74,16 @@
         <td>{{ item.reason }}</td>
         <td class="mut">{{ item.created_by }}</td>
         <td class="mut">{{ item.created_at|date:"Y-m-d H:i" }}</td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick='remove_ex_part("{{ item.id }}")'>Remove</button></td>
       </tr>
     {% empty %}<tr><td colspan="6" class="mut">{% if search or sap_location_filter %}No excluded P/Ns match this search.{% else %}No P/Ns are excluded for this PI.{% endif %}</td></tr>{% endfor %}</tbody>
   </table></div>
 </section>
 {% endif %}
 
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{% static 'cycles/inventory_ex_parts.js' %}?v=1.0"></script>
 {% endblock %}

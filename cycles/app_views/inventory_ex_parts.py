@@ -115,6 +115,35 @@ def ex_part_create(request):
 
 
 @login_required
+def ex_part_delete(request, ex_part_id):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to change the exclude PN list. {msg}"))
+        return redirect("core:home")
+
+    active_cycle_ref = context["cycle_ref"]
+    if not active_cycle_ref:
+        messages.error(request, "No active cycle is available.")
+        return redirect("core:home")
+
+    existing_ex_part = ExcludedPart.objects.filter(id=ex_part_id)
+    if not existing_ex_part.exists():
+        messages.error(request, "Excluded part does NOT exist.")
+        return redirect("cycles:ex_part_setup")
+
+    existing_ex_part.delete()
+    messages.success(request, "Excluded part deleted successfully.")
+    return redirect("cycles:ex_part_setup")
+
+
+@login_required
 def ex_part_template_download(request):
     curr_user = request.user
     context = get_basic_info(request)

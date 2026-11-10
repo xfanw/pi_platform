@@ -5,6 +5,7 @@ from cycles.app_views.inventory_ex_parts import *
 urlpatterns = [
     path("ex_part_setup", ex_part_setup, name="ex_part_setup"),
     path("ex_part_create", ex_part_create, name="ex_part_create"),
+    path("ex_part_delete/<int:ex_part_id>", ex_part_delete, name="ex_part_delete"),
 ]
 
 urlpatterns += [

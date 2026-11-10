@@ -10,6 +10,7 @@ from cycles.models import (
 PERMISSION = "Setting.Count.Tag / Manual Key-In"
 
 
+@login_required
 def count_tag_view(request):
     curr_user = request.user
     context = get_basic_info(request)
