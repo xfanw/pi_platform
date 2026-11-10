@@ -1,19 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: always
-    ports:
-      - "55432:5433"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    env_file:
-      - ./config/.env
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   web:
     build: .
     restart: always
@@ -25,9 +10,7 @@ services:
       - 8000
     env_file:
       - ./config/.env
-    depends_on:
-      db:
-        condition: service_healthy
+
 
   nginx:
     image: nginx:stable-alpine
@@ -44,6 +27,5 @@ services:
       - web
 
 volumes:
-  postgres_data:
   static_volume:
   media_volume:
