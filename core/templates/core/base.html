@@ -49,7 +49,7 @@
     </form>
     {% endif %}
     
-    <span class="userchip"><b>{{ user.username }}</b></span>
+    <span class="userchip"><b>{{ user.first_name }}</b></span>
 
     <form method="post" action="{% url 'core:select_role' %}">
       {% csrf_token %}
