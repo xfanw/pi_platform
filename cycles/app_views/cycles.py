@@ -152,6 +152,7 @@ def cycles(request):
     return render(request, "cycles/cycles.html", context)
 
 
+@login_required
 def create_cycle(request):
     curr_user = request.user
     context = get_basic_info(request)

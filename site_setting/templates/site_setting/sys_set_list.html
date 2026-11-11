@@ -5,7 +5,7 @@
 <section class="card location-data-card">
   <div class="table-section-head"><div><h2>System Lists</h2>
   <p class="mut">System lists used across the platform.</p>
-  <div class="scroll"><table class="location-table"><thead><tr><th>Name</th><th>Description</th><th>Value</th><th>Action</th></tr></thead><tbody>
+  <table class="location-table"><thead><tr><th>Name</th><th>Description</th><th>Value</th><th>Action</th></tr></thead><tbody>
   {% for item in pi_list %}
   <tr>
     <td>{{ item.name }}</td>
@@ -13,8 +13,8 @@
     <td>{{ item.value }}</td>
     <td><a class='btn btn-sm btn-primary' href="{% url 'site_setting:sys_set_detail' %}?var_name={{ item.name }}">Edit</a></td>
   </tr>
-  {% empty %}<tr><td colspan="6" class="mut">No Locations match the current search and filters.</td></tr>{% endfor %}
-  </tbody></table></div>
+  {% endfor %}
+  </tbody></table>
 </section>
 {% endblock %}
 

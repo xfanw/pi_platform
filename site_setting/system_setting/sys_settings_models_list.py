@@ -95,14 +95,7 @@ class ExceptionStatus(SystemSettingBase):
     name = "COUNT_EXCEPTION_STATUS"
     desc = "Count: Exception Status"
     var_type = "list"
-    value = ["PENDING", "APPROVED_NEW_PART", "MAPPED", "REJECTED"]
+    value = ["Pending", "Approved New Part", "Mapped to Existing Part", "Rejected"]
 
     def __init__(self):
         self._initialize()
-
-
-# class ExceptionStatus(models.TextChoices):
-#     PENDING = "PENDING", "Pending"
-#     APPROVED_NEW_PART = "APPROVED_NEW_PART", "Approved New Part"
-#     MAPPED = "MAPPED", "Mapped to Existing Part"
-#     REJECTED = "REJECTED", "Rejected"

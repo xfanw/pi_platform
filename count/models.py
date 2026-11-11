@@ -1,4 +1,3 @@
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -69,8 +68,10 @@ class CountRecord(models.Model):
     counter_name = models.CharField(max_length=160, blank=True)
     counter_employee_id = models.CharField(max_length=80, blank=True)
     entered_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="entered_count_records")
-    entered_at = models.DateTimeField()
-    accepted_at = models.DateTimeField(auto_now_add=True)
+    entered_at = models.DateTimeField(null=True)
+    accepted_at = models.DateTimeField(null=True)
+    accepted_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="accepted_count_records")
+    editable = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
@@ -90,11 +91,6 @@ class CountRecord(models.Model):
                 name="counting_co_cycle_i_b353ca_idx",
             ),
         ]
-
-    def save(self, *args, **kwargs):
-        if not self._state.adding:
-            raise ValidationError("Accepted CountRecord rows are immutable; create a correction event.")
-        return super().save(*args, **kwargs)
 
 
 class CountIntakeException(TimeStampedModel):

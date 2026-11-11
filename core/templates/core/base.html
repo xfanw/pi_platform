@@ -110,7 +110,7 @@
       {% comment %} {% if "Count.WMS Feed" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'count-wms' %}on{% endif %}">WMS Feed</a>{% endif %}
       {% if "Count.Virtual Tag Scan" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'count-virtual-tag' or request.resolver_match.url_name == 'count-virtual-tag-detail' %}on{% endif %}">Virtual Tag Scan</a>{% endif %} {% endcomment %}
       {% if "Count.Count Results" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'count-results' %}on{% endif %}">Count Results</a>{% endif %}
-      {% if "Count.Pending Station" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'pending-station' %}on{% endif %}">Pending Station{% if pending_count %} #TODO <span class="badge">{{ pending_count }}</span>{% endif %}</a>{% endif %}
+      {% if "Count.Pending Station" in page_access_list %}<a href="{% url 'count:pending_station' %}" class="{% if request.resolver_match.url_name == 'pending_station' %}on{% endif %}">Pending Station{% if pending_count %} <span class="badge">{{ pending_count }}</span>{% endif %}</a>{% endif %}
     </div>
     {% endif %}
 

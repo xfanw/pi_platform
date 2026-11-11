@@ -12,6 +12,7 @@ from cycles.models import (
 PERMISSION = "Count.Manual Key-In"
 
 
+@login_required
 def count_manual(request):
     curr_user = request.user
     context = get_basic_info(request)
@@ -74,11 +75,12 @@ def count_manual(request):
     if search:
         has_search = True
         count_record_set = count_record_set.filter(
-            Q(name__icontains=search)
+            Q(part__part_number__icontains=search)
             | Q(sap_location__code__icontains=search)
             | Q(sap_location__department__icontains=search)
             | Q(physical_location__name__icontains=search)
             | Q(sub_location__name__icontains=search)
+            | Q(counter_name__icontains=search)
         )
     if sap_location_filter:
         has_search = True
@@ -97,6 +99,7 @@ def count_manual(request):
     return render(request, "count/manual.html", context)
 
 
+@login_required
 def count_manual_create(request):
     curr_user = request.user
     context = get_basic_info(request)
@@ -186,7 +189,7 @@ def count_manual_create(request):
             cycle=active_cycle_ref,
             raw_part_number=part_number,
             source="Manual",
-            status="PENDING",
+            status="Pending",
             quantity=quantity,
             counter_name=counter_name,
             sap_location=sap_location_ref.sap_location if sap_location_ref else None,

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.db.models import Q
 from access_control.models import RoleAction, RoleAssignment
-from site_setting.models import Plant
+from site_setting.models import Plant, SAPLocation
 
 
 def active_roles(user, curr_time=None):
@@ -29,6 +29,16 @@ def is_plant_manager(user, plant, *, role_name="Plant Admin"):
     if role_name != "Plant Admin":
         return False
     return active_roles(user).filter(role=role_name, plant=plant).exists()
+
+
+def my_sap_loc(user, plant, curr_time=None):
+    active_role_set = active_plant_roles(user, plant, curr_time=curr_time)
+    if not active_role_set:
+        return set()
+    if active_role_set.filter(sap_location__isnull=True).exists():
+        return set(SAPLocation.objects.filter(plant=plant, is_active=True).values_list("code", flat=True))
+
+    return set(active_role_set.filter(sap_location__isnull=False).values_list("sap_location__code", flat=True))
 
 
 def check_permission(curr_user, plant, app_name, editable=False):
