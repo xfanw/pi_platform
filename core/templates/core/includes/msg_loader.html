@@ -13,7 +13,7 @@
 <script>
     let message_type = "";
     let message_content = "";
-    console.log("{{ messages }}");
+    {% comment %} console.log("{{ messages }}"); {% endcomment %}
     
     {% for message in messages %}
         {% comment %} console.log( "{{ message }}") {% endcomment %}

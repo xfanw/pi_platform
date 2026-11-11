@@ -169,13 +169,7 @@ class CounterRoster(ActiveModel):
 
     plant = models.ForeignKey(Plant, on_delete=models.PROTECT, related_name="counter_roster")
     department = models.CharField(max_length=63, blank=True)
-    sap_location = models.ForeignKey(
-        SAPLocation,
-        on_delete=models.PROTECT,
-        related_name="counter_roster",
-        null=True,
-        blank=True,
-    )
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, related_name="counter_roster", null=True, blank=True)
     employee_id = models.CharField(max_length=80)
     display_name = models.CharField(max_length=160)
 

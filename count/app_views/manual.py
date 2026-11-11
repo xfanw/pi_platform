@@ -1,16 +1,18 @@
+from access_control.models import CounterRoster
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
+from count.models import CountIntakeException, CountRecord
+from cycles.app_models.inventory_models import PartMaster
 from cycles.models import (
     CyclePhysicalLocation,
     CycleSAPLocation,
     CycleSubLocation,
-    CycleTagRange,
 )
 
 PERMISSION = "Count.Manual Key-In"
 
 
-def count_manual_view(request):
+def count_manual(request):
     curr_user = request.user
     context = get_basic_info(request)
     plant = context["plant_ref"]
@@ -25,7 +27,7 @@ def count_manual_view(request):
 
     active_cycle = context["cycle_ref"]
     if not active_cycle:
-        return render(request, "cycles/cycle_tags.html", context)
+        return render(request, "count/manual.html", context)
 
     cycle_sap_locations = list(
         CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True).values_list(
@@ -47,17 +49,31 @@ def count_manual_view(request):
     context["cycle_sap_locations"] = cycle_sap_locations
     context["cycle_physical_locations"] = cycle_physical_locations
     context["cycle_sub_locations"] = cycle_sub_locations
+    plant_counter = list(
+        CounterRoster.objects.filter(plant=plant, sap_location__isnull=True, is_active=True)
+        .values_list("display_name", flat=True)
+        .distinct()
+    )
+    context["plant_counter"] = plant_counter
+    counter_roster_set = list(
+        CounterRoster.objects.filter(plant=plant, sap_location__isnull=False, is_active=True).values(
+            "sap_location__code", "display_name"
+        )
+    )
+
+    context["counter_roster_set"] = counter_roster_set
+
     # Search and Filter
     search_data = request.GET
     search = search_data.get("search", "").strip()
     sap_location_filter = search_data.get("sap_location", "").strip()
     location_filter = search_data.get("location", "").strip()
     sub_location_filter = search_data.get("sub_location", "").strip()
-    tag_range_set = CycleTagRange.objects.filter(plant=plant)
+    count_record_set = CountRecord.objects.filter(cycle=active_cycle, source="Manual")
     has_search = False
     if search:
         has_search = True
-        tag_range_set = tag_range_set.filter(
+        count_record_set = count_record_set.filter(
             Q(name__icontains=search)
             | Q(sap_location__code__icontains=search)
             | Q(sap_location__department__icontains=search)
@@ -66,28 +82,22 @@ def count_manual_view(request):
         )
     if sap_location_filter:
         has_search = True
-        tag_range_set = tag_range_set.filter(
+        count_record_set = count_record_set.filter(
             Q(sap_location__code__icontains=sap_location_filter) | Q(sap_location__department__icontains=sap_location_filter)
         )
-    if location_filter:
-        has_search = True
-        tag_range_set = tag_range_set.filter(physical_location__name__icontains=location_filter)
-    if sub_location_filter:
-        has_search = True
-        tag_range_set = tag_range_set.filter(sub_location__name__icontains=sub_location_filter)
 
     context["search"] = search
     context["location_filter"] = location_filter
     context["sap_location_filter"] = sap_location_filter
     context["sub_location_filter"] = sub_location_filter
-    context["tag_ranges"] = tag_range_set
+    context["count_record_set"] = count_record_set
 
-    if has_search and not tag_range_set.exists():
-        messages.warning(request, "No Tag Ranges found matching your search criteria.")
+    if has_search and not count_record_set.exists():
+        messages.warning(request, "No Count Records found matching your search criteria.")
     return render(request, "count/manual.html", context)
 
 
-def tag_create(request):
+def count_manual_create(request):
     curr_user = request.user
     context = get_basic_info(request)
     plant = context["plant_ref"]
@@ -104,64 +114,87 @@ def tag_create(request):
     active_cycle_ref = context["cycle_ref"]
     if not active_cycle_ref:
         messages.error(request, "No active cycle is available.")
-        return redirect("core:home")
+        return redirect("count:count_manual")
 
     post_data = request.POST
-
     sap_location = post_data.get("sap_location", "")
     location = post_data.get("location", "").strip()
     sub_location = post_data.get("sub_location", "").strip()
-    start_number = post_data.get("start_number", "").strip()
-    end_number = post_data.get("end_number", "").strip()
-    if not start_number or not end_number:
-        messages.error(request, "Start Number and End Number are required.")
-        return redirect("cycles:tag_setup")
+    part_number = post_data.get("part_number", "").strip()
+    quantity = post_data.get("quantity", "").strip()
+    counter_name = post_data.get("counter_name", "").strip()
+    if not part_number or not quantity:
+        messages.error(request, "Part Number and Quantity are required.")
+        return redirect("count:count_manual")
 
-    if not start_number.isnumeric() or not end_number.isnumeric():
-        messages.error(request, "Start Number and End Number must be numeric.")
-        return redirect("cycles:tag_setup")
+    if not counter_name:
+        counter_name = curr_user.first_name
 
-    if int(start_number) > int(end_number):
-        messages.error(request, "Start Number cannot be greater than End Number.")
-        return redirect("cycles:tag_setup")
+    if not sap_location or not location:
+        messages.error(request, "SAP Location and Location are required.")
+        return redirect("count:count_manual")
 
-    sub_location_ref = CycleSubLocation.objects.filter(
+    sap_location_ref = CycleSAPLocation.objects.filter(plant=plant, cycle=active_cycle_ref, sap_location__code=sap_location).first()
+    if not sap_location_ref:
+        messages.error(request, "Invalid SAP Location selected.")
+        return redirect("count:count_manual")
+
+    location_ref = CyclePhysicalLocation.objects.filter(
         plant=plant,
         cycle=active_cycle_ref,
-        sub_location__name=sub_location,
-        sub_location__physical_location__name=location,
-        sub_location__physical_location__sap_location__code=sap_location,
+        physical_location__name=location,
+        physical_location__sap_location=sap_location_ref.sap_location,
     ).first()
+    if not location_ref:
+        messages.error(request, "Invalid Location selected.")
+        return redirect("count:count_manual")
 
-    if not sub_location_ref:
-        messages.error(request, "Invalid Sub-location selected.")
-        return redirect("cycles:tag_setup")
+    sub_location_ref = None
+    if sub_location:
+        sub_location_ref = CycleSubLocation.objects.filter(
+            plant=plant,
+            cycle=active_cycle_ref,
+            sub_location__name=sub_location,
+            sub_location__physical_location=location_ref.physical_location,
+        ).first()
+        if not sub_location_ref:
+            messages.error(request, "Invalid Sub-location selected.")
+            return redirect("count:count_manual")
 
-    existing_range = CycleTagRange.objects.filter(end_number__gte=start_number, start_number__lte=end_number).order_by("-created_at")
-    if existing_range.exists():
-        msg = "<table class='table-center'><tr><th>SAP Location</th><th>Physical Location</th><th>Sub Location</th><th>Start Number</th><th>End Number</th></tr>"
-        for existing_item in existing_range[:5]:
-            msg += f"<tr><td>{existing_item.sap_location.code}</td><td>{existing_item.physical_location.name}</td><td>{existing_item.sub_location.name}</td><td>{existing_item.start_number}</td><td>{existing_item.end_number}</td></tr>"
-        msg += "</table>"
+    part_ref = PartMaster.objects.filter(cycle=active_cycle_ref, part_number=part_number).first()
+    counter_employee = CounterRoster.objects.filter(display_name=counter_name).order_by("-id").first()
+    if part_ref:
+        CountRecord.objects.create(
+            cycle=active_cycle_ref,
+            source="Manual",
+            source_record_key=f"{counter_name}_{curr_time}",
+            sap_location=sap_location_ref.sap_location,
+            physical_location=location_ref.physical_location,
+            sub_location=sub_location_ref.sub_location if sub_location_ref else None,
+            part=part_ref,
+            quantity=quantity,
+            counter_name=counter_name,
+            counter_employee_id=counter_employee.employee_id if counter_employee else "",
+            entered_by=curr_user,
+            entered_at=curr_time,
+            accepted_at=curr_time,
+        )
 
-        latest_existing_range = existing_range.first()
-        msg += f"<br><br>Next Available Tag Start Number is: <b>{latest_existing_range.end_number + 1}</b>"
-        messages.error(request, mark_safe(f"Overlapping tag range exists.<br><br>{msg}"))
-        return redirect("cycles:tag_setup")
-
-    tag_range = CycleTagRange.objects.create(
-        plant=plant,
-        cycle=active_cycle_ref,
-        sap_location=sub_location_ref.sub_location.physical_location.sap_location,
-        physical_location=sub_location_ref.sub_location.physical_location,
-        sub_location=sub_location_ref.sub_location,
-        start_number=start_number,
-        end_number=end_number,
-        tag_count=int(end_number) - int(start_number) + 1,
-        created_at=curr_time,
-        created_by=curr_user,
-        updated_by=curr_user,
-    )
-
-    messages.success(request, f"Tag range {start_number} {end_number} created successfully.")
-    return redirect("cycles:tag_setup")
+        messages.success(request, "Count record created successfully.")
+    else:
+        CountIntakeException.objects.create(
+            cycle=active_cycle_ref,
+            raw_part_number=part_number,
+            source="Manual",
+            status="PENDING",
+            quantity=quantity,
+            counter_name=counter_name,
+            sap_location=sap_location_ref.sap_location if sap_location_ref else None,
+            physical_location=location_ref.physical_location if location_ref else None,
+            sub_location=sub_location_ref.sub_location if sub_location_ref else None,
+            created_at=curr_time,
+            created_by=curr_user,
+            updated_by=curr_user,
+        )
+        messages.error(request, f"Unknown P/N {part_number} held in Pending Station for review.")
+    return redirect("count:count_manual")
