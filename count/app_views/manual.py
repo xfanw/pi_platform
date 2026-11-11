@@ -165,7 +165,7 @@ def count_manual_create(request):
             return redirect("count:count_manual")
 
     part_ref = PartMaster.objects.filter(cycle=active_cycle_ref, part_number=part_number).first()
-    counter_employee = CounterRoster.objects.filter(display_name=counter_name).order_by("-id").first()
+    # counter_employee = CounterRoster.objects.filter(display_name=counter_name).order_by("-id").first()
     if part_ref:
         CountRecord.objects.create(
             cycle=active_cycle_ref,
@@ -177,7 +177,7 @@ def count_manual_create(request):
             part=part_ref,
             quantity=quantity,
             counter_name=counter_name,
-            counter_employee_id=counter_employee.employee_id if counter_employee else "",
+            # counter_employee_id=counter_employee.employee_id if counter_employee else "",
             entered_by=curr_user,
             entered_at=curr_time,
             accepted_at=curr_time,
