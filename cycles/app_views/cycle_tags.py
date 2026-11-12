@@ -1,6 +1,7 @@
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from core.excel_file_handler.cycle_tag_range import tag_batch_upload, tag_batch_validate, tag_range_excel_bytes
+from cycles.app_functions.cycle_tag import create_tag_range_detail
 from cycles.models import (
     CyclePhysicalLocation,
     CycleSAPLocation,
@@ -144,9 +145,9 @@ def tag_create(request):
 
     existing_range = CycleTagRange.objects.filter(end_number__gte=start_number, start_number__lte=end_number).order_by("-created_at")
     if existing_range.exists():
-        msg = "<table class='table-center'><tr><th>SAP Location</th><th>Physical Location</th><th>Sub Location</th><th>Start Number</th><th>End Number</th></tr>"
+        msg = "<table class='table-center'><tr><th>Plant</th><th>SAP Location</th><th>Physical Location</th><th>Sub Location</th><th>Start Number</th><th>End Number</th></tr>"
         for existing_item in existing_range[:5]:
-            msg += f"<tr><td>{existing_item.sap_location.code}</td><td>{existing_item.physical_location.name}</td><td>{existing_item.sub_location.name}</td><td>{existing_item.start_number}</td><td>{existing_item.end_number}</td></tr>"
+            msg += f"<tr><td>{existing_item.plant.code}</td><td>{existing_item.sap_location.code}</td><td>{existing_item.physical_location.name}</td><td>{existing_item.sub_location.name}</td><td>{existing_item.start_number}</td><td>{existing_item.end_number}</td></tr>"
         msg += "</table>"
         messages.error(request, mark_safe(f"Overlapping tag range exists.<br><br>{msg}"))
         return redirect("cycles:tag_setup")
@@ -164,7 +165,7 @@ def tag_create(request):
         created_by=curr_user,
         updated_by=curr_user,
     )
-
+    create_tag_range_detail(tag_range)
     messages.success(request, f"Tag range {start_number} {end_number} created successfully.")
     return redirect("cycles:tag_setup")
 
@@ -323,7 +324,10 @@ def tag_batch_confirm(request, batch_id):
                 )
             )
 
-        CycleTagRange.objects.bulk_create(new_tag_range)
+        created_tag_range = CycleTagRange.objects.bulk_create(new_tag_range)
+
+        for tag_range in created_tag_range:
+            create_tag_range_detail(tag_range)
     except Exception as e:
         messages.error(request, f"Error creating Cycle Tag Ranges. {clean_errors(e)}")
         return redirect("cycles:tag_batch", batch_id=batch_ref.id)

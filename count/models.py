@@ -4,7 +4,7 @@ from django.db.models import Q
 
 from core.constants import QUANTITY_DECIMAL_PLACES, QUANTITY_MAX_DIGITS
 from core.models import TimeStampedModel
-from cycles.models import PartMaster, PICycle
+from cycles.models import PartMaster, PICycle, CycleTagRange
 from site_setting.models import PhysicalLocation, SAPLocation, SubLocation
 from django.contrib.auth.models import User
 
@@ -91,6 +91,13 @@ class CountRecord(models.Model):
                 name="counting_co_cycle_i_b353ca_idx",
             ),
         ]
+
+
+class CycleTagDetail(TimeStampedModel):
+    tag_range = models.ForeignKey(CycleTagRange, on_delete=models.CASCADE, related_name="tag_details")
+    tag_number = models.BigIntegerField(unique=True)
+    count_record = models.ForeignKey(CountRecord, on_delete=models.PROTECT, related_name="tag_details", null=True, blank=True)
+    is_counted = models.BooleanField(default=False)
 
 
 class CountIntakeException(TimeStampedModel):
