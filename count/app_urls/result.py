@@ -1,5 +1,5 @@
 from django.urls import path
-from count.app_views.pending import *
+from count.app_views.pending import pending_station, pending_part_create, pending_part_map, pending_part_reject
 from count.app_views.results import count_result
 
 urlpatterns = [

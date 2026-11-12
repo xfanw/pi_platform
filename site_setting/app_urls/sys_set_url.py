@@ -1,4 +1,8 @@
-from site_setting.app_views.sys_set import *
+from site_setting.app_views.sys_set import (
+    sys_set,
+    sys_set_detail,
+    change_system_list_settings,
+)
 from django.urls import path
 
 urlpatterns = [

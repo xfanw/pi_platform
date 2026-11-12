@@ -1,5 +1,13 @@
 from django.urls import path
-from site_setting.app_views.counter_roster import *
+from site_setting.app_views.counter_roster import (
+    counter_setup,
+    counter_create,
+    counter_status,
+    counter_template_download,
+    counter_file_upload,
+    counter_batch,
+    counter_batch_confirm,
+)
 
 urlpatterns = [
     path("counter_setup", counter_setup, name="counter_setup"),

@@ -1,4 +1,19 @@
-from site_setting.app_views.location import *
+from site_setting.app_views.location import (
+    location_setup,
+    create_location,
+    update_location,
+    location_template_download,
+    location_file_upload,
+    location_batch,
+    location_batch_confirm,
+    sub_location_setup,
+    create_sub_location,
+    update_sub_location,
+    sub_location_template_download,
+    sub_location_file_upload,
+    sub_location_batch,
+    sub_location_batch_confirm,
+)
 from django.urls import path
 
 urlpatterns = [

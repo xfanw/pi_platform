@@ -1,4 +1,10 @@
-from site_setting.app_views.plant import *
+from site_setting.app_views.plant import (
+    plant_setup,
+    create_plant,
+    update_plant,
+    create_sap_location,
+    update_sap_location,
+)
 from django.urls import path
 
 urlpatterns = [

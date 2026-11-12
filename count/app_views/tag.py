@@ -7,7 +7,7 @@ from cycles.models import (
     CycleTagRange,
 )
 
-PERMISSION = "Setting.Count.Tag / Manual Key-In"
+PERMISSION = "Setting.Count.Tag Key-In"
 
 
 @login_required
