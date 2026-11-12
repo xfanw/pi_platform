@@ -1,23 +1,43 @@
-{% extends "portal/base.html" %}
-{% block title %}Tag / Manual Key-in | PI Platform{% endblock %}
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Tag Key-in | PI Platform{% endblock %}
 {% block body %}
+
+
 <div class="page-heading">
-  <div><h1>Tag / Manual Key-in</h1><p class="page-sub">Find an unused tag, enter its count, or submit a correction for a previously counted tag.</p></div>
-  <a class="btn ghost" href="{% url 'portal:count-results' %}">View Count Results</a>
+  <div><h1>Tag Key-in</h1><p class="page-sub text-danger">This page served for tag entry only. If you do not have tags, please use the Manual Key-in page instead.</p></div>
+  <a class="btn btn-sm btn-primary" href="{% url 'count:count_result' %}">View Count Results</a>
 </div>
+
+{% if not cycle_ref %}
+<section class="tag-range-context disabled row">
+  <div class='col-md-4'><span>Current PI only</span><h2>No Open PI Cycle</h2></div>
+  <div class='col-md-7'>
+    <h6 class='fw-bold text-danger'>Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Count:Tag Key-in. </h6>
+  </div>
+</section>
+{% else %}
+<section class="tag-range-context">
+  <div class='col-md-4'><span>Current PI only</span><h2>{{ cycle_ref.name }}</h2></div>
+</section>
 
 <section class="card channel-entry-card">
   <div class="pane-title">Enter count</div>
   <form method="post" class="count-entry-grid" id="count-entry-form">
-    {% csrf_token %}<input type="hidden" name="submission_key" value="{{ submission_key }}">
-    <div><label>SAP Location</label><select name="sap_location_id" id="count-sap" required><option value="">Select SAP Location</option>{% for item in sap_locations %}<option value="{{ item.pk }}">{{ item.code }} · {{ item.department.name }}</option>{% endfor %}</select></div>
-    <div><label>Location</label><select name="physical_location_id" id="count-location" required><option value="">Select Location</option>{% for item in physical_locations %}<option value="{{ item.pk }}" data-sap="{{ item.sap_location_id }}">{{ item.name }}</option>{% endfor %}</select></div>
-    <div><label>Sub Location <span class="optional" id="count-sub-hint">optional</span></label><select name="sub_location_id" id="count-sub"><option value="">None</option>{% for item in sub_locations %}<option value="{{ item.pk }}" data-location="{{ item.physical_location_id }}">{{ item.name }}</option>{% endfor %}</select></div>
-    <div><label>Tag Number <span class="optional">when Tags</span></label><input name="tag_number" id="count-tag-number" maxlength="80"></div>
-    <div><label>P/N</label><input name="part_number" id="count-part-number" maxlength="80" required></div>
-    <div><label>Count Qty</label><input name="quantity" type="number" min="0" step="0.0001" required></div>
-    <div><label>Counter</label><select name="counter_name"><option value="">Select Counter</option>{% for item in counter_roster %}<option value="{{ item.display_name }} [{{ item.employee_id }}]">{{ item.display_name }} · {{ item.employee_id }}</option>{% endfor %}</select></div>
-    <div class="count-submit"><span class="method-readout">Tag Number requires a Sub Location. Leave Tag blank for Manual Key-in.</span><button type="submit">Submit Count</button></div>
+    {% csrf_token %}
+    <div><label>Tag Number <span class="optional">Search Tags</span></label>
+      <div class='input-group'>
+        <input class="form-control" name="tag_number" id="count-tag-number" maxlength="80">
+        <button class='btn btn-primary' type="button" id="search-tag-btn">&rArr;</button>
+      </div>
+    </div>
+    <div><label>SAP Location</label><input class="form-control" id="sap_location" disabled placeholder="Input/Select Tag"></div>
+    <div><label>Location</label><input class='form-control' id="physical_location" disabled placeholder="Input/Select Tag"></div>
+    <div><label>Sub Location</label><input class='form-control' id="sub_location" disabled placeholder="Input/Select Tag"></div>
+    <div><label>P/N</label><input name="part_number" id="part_number" class='form-control' maxlength="80" required ></div>
+    <div><label>Count Qty</label><input name="quantity" type="number" class='form-control' min="0" step="0.0001" required></div>
+    <div><label>Counter</label><select name="counter_name" class='form-control'><option value="">Select Counter</option>{% for item in counter_roster %}<option value="{{ item.display_name }} [{{ item.employee_id }}]">{{ item.display_name }} · {{ item.employee_id }}</option>{% endfor %}</select></div>
+    <div><label>Action</label><button class='btn btn-primary' type="submit">Submit Count</button></div>
   </form>
 </section>
 
@@ -25,7 +45,7 @@
   <form method="get" class="inline filter-form">
     <div><label>Search tag / P/N / location</label><input name="search" value="{{ search }}" placeholder="Tag, P/N, location or sub-location"></div>
     <div><label>SAP Location</label><select name="sap_location"><option value="">All</option>{% for item in sap_locations %}<option value="{{ item.pk }}" {% if sap_filter == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.code }}</option>{% endfor %}</select></div>
-    <button type="submit">Search</button><a class="btn ghost" href="{% url 'portal:count-tag' %}">Clear</a>
+    <button class="btn btn-sm btn-primary" type="submit">Search</button><a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_tag' %}">Clear</a>
   </form>
 </section>
 
@@ -46,21 +66,10 @@
     </tbody></table></div>
   </div>
 </section>
+{% endif %}
 {% endblock %}
 {% block scripts %}
 <script>
-(() => {
-  const sap = document.getElementById('count-sap'), location = document.getElementById('count-location'), sub = document.getElementById('count-sub');
-  const subHint = document.getElementById('count-sub-hint'), tag = document.getElementById('count-tag-number');
-  const filterOptions = (select, attribute, value) => { [...select.options].forEach((option, index) => { if (index) option.hidden = !value || option.dataset[attribute] !== value; }); if (select.selectedOptions[0]?.hidden) select.value = ''; };
-  const refreshTagRequirement = () => { const hasTag = Boolean(tag.value.trim()); sub.required = hasTag; subHint.textContent = hasTag ? 'required when Tag is entered' : 'optional'; };
-  const choose = (select, value) => { select.value = String(value); select.dispatchEvent(new Event('change')); };
-  sap.addEventListener('change', () => { filterOptions(location, 'sap', sap.value); location.value=''; filterOptions(sub, 'location', ''); sub.value=''; refreshTagRequirement(); });
-  location.addEventListener('change', () => { filterOptions(sub, 'location', location.value); sub.value=''; refreshTagRequirement(); });
-  tag.addEventListener('input', refreshTagRequirement);
-  document.querySelectorAll('.use-tag').forEach(button => button.addEventListener('click', () => { choose(sap, button.dataset.sap); choose(location, button.dataset.location); sub.value=button.dataset.sub; tag.value=button.dataset.tag; refreshTagRequirement(); document.getElementById('count-part-number').focus(); window.scrollTo({top:0, behavior:'smooth'}); }));
-  filterOptions(location, 'sap', ''); filterOptions(sub, 'location', '');
-  refreshTagRequirement();
-})();
+
 </script>
 {% endblock %}

@@ -1,6 +1,6 @@
 from django.urls import path
-from count.app_views.pending import pending_station, pending_part_create, pending_part_map, pending_part_reject
-from count.app_views.results import count_result
+from count.app_views.result_pending import pending_station, pending_part_create, pending_part_map, pending_part_reject
+from count.app_views.result_results import count_result
 
 urlpatterns = [
     path("pending_station", pending_station, name="pending_station"),

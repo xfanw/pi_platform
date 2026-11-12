@@ -1,5 +1,7 @@
+from access_control.models import CounterRoster
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
+from count.models import CountRecord
 from cycles.models import (
     CyclePhysicalLocation,
     CycleSAPLocation,
@@ -11,7 +13,7 @@ PERMISSION = "Setting.Count.Tag Key-In"
 
 
 @login_required
-def count_tag_view(request):
+def count_tag(request):
     curr_user = request.user
     context = get_basic_info(request)
     plant = context["plant_ref"]
@@ -21,12 +23,12 @@ def count_tag_view(request):
 
     can_act, msg = check_permission(curr_user, plant, PERMISSION)
     if not can_act:
-        messages.error(request, mark_safe(f"You do NOT have permission to view tag range setup. {msg}"))
+        messages.error(request, mark_safe(f"You do NOT have permission to view tag key-in. {msg}"))
         return redirect("core:home")
 
     active_cycle = context["cycle_ref"]
     if not active_cycle:
-        return render(request, "cycles/cycle_tags.html", context)
+        return render(request, "count/tag.html", context)
 
     cycle_sap_locations = list(
         CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True).values_list(
@@ -48,47 +50,56 @@ def count_tag_view(request):
     context["cycle_sap_locations"] = cycle_sap_locations
     context["cycle_physical_locations"] = cycle_physical_locations
     context["cycle_sub_locations"] = cycle_sub_locations
+    plant_counter = list(
+        CounterRoster.objects.filter(plant=plant, sap_location__isnull=True, is_active=True)
+        .values_list("display_name", flat=True)
+        .distinct()
+    )
+    context["plant_counter"] = plant_counter
+    counter_roster_set = list(
+        CounterRoster.objects.filter(plant=plant, sap_location__isnull=False, is_active=True).values(
+            "sap_location__code", "display_name"
+        )
+    )
+
+    context["counter_roster_set"] = counter_roster_set
+
     # Search and Filter
     search_data = request.GET
     search = search_data.get("search", "").strip()
     sap_location_filter = search_data.get("sap_location", "").strip()
     location_filter = search_data.get("location", "").strip()
     sub_location_filter = search_data.get("sub_location", "").strip()
-    tag_range_set = CycleTagRange.objects.filter(plant=plant)
+    count_record_set = CountRecord.objects.filter(cycle=active_cycle, source="Tag Key-in")
     has_search = False
     if search:
         has_search = True
-        tag_range_set = tag_range_set.filter(
-            Q(name__icontains=search)
+        count_record_set = count_record_set.filter(
+            Q(part__part_number__icontains=search)
             | Q(sap_location__code__icontains=search)
             | Q(sap_location__department__icontains=search)
             | Q(physical_location__name__icontains=search)
             | Q(sub_location__name__icontains=search)
+            | Q(counter_name__icontains=search)
         )
     if sap_location_filter:
         has_search = True
-        tag_range_set = tag_range_set.filter(
+        count_record_set = count_record_set.filter(
             Q(sap_location__code__icontains=sap_location_filter) | Q(sap_location__department__icontains=sap_location_filter)
         )
-    if location_filter:
-        has_search = True
-        tag_range_set = tag_range_set.filter(physical_location__name__icontains=location_filter)
-    if sub_location_filter:
-        has_search = True
-        tag_range_set = tag_range_set.filter(sub_location__name__icontains=sub_location_filter)
 
     context["search"] = search
     context["location_filter"] = location_filter
     context["sap_location_filter"] = sap_location_filter
     context["sub_location_filter"] = sub_location_filter
-    context["tag_ranges"] = tag_range_set
+    context["count_record_set"] = count_record_set
 
-    if has_search and not tag_range_set.exists():
-        messages.warning(request, "No Tag Ranges found matching your search criteria.")
-    return render(request, "cycles/cycle_tags.html", context)
+    if has_search and not count_record_set.exists():
+        messages.warning(request, "No Count Records found matching your search criteria.")
+    return render(request, "count/tag.html", context)
 
 
-def tag_create(request):
+def count_tag_create(request):
     curr_user = request.user
     context = get_basic_info(request)
     plant = context["plant_ref"]
@@ -116,15 +127,15 @@ def tag_create(request):
     end_number = post_data.get("end_number", "").strip()
     if not start_number or not end_number:
         messages.error(request, "Start Number and End Number are required.")
-        return redirect("cycles:tag_setup")
+        return redirect("count:count_tag")
 
     if not start_number.isnumeric() or not end_number.isnumeric():
         messages.error(request, "Start Number and End Number must be numeric.")
-        return redirect("cycles:tag_setup")
+        return redirect("count:count_tag")
 
     if int(start_number) > int(end_number):
         messages.error(request, "Start Number cannot be greater than End Number.")
-        return redirect("cycles:tag_setup")
+        return redirect("count:count_tag")
 
     sub_location_ref = CycleSubLocation.objects.filter(
         plant=plant,
@@ -136,7 +147,7 @@ def tag_create(request):
 
     if not sub_location_ref:
         messages.error(request, "Invalid Sub-location selected.")
-        return redirect("cycles:tag_setup")
+        return redirect("count:count_tag")
 
     existing_range = CycleTagRange.objects.filter(end_number__gte=start_number, start_number__lte=end_number).order_by("-created_at")
     if existing_range.exists():
@@ -148,7 +159,7 @@ def tag_create(request):
         latest_existing_range = existing_range.first()
         msg += f"<br><br>Next Available Tag Start Number is: <b>{latest_existing_range.end_number + 1}</b>"
         messages.error(request, mark_safe(f"Overlapping tag range exists.<br><br>{msg}"))
-        return redirect("cycles:tag_setup")
+        return redirect("count:count_tag")
 
     tag_range = CycleTagRange.objects.create(
         plant=plant,
@@ -165,4 +176,4 @@ def tag_create(request):
     )
 
     messages.success(request, f"Tag range {start_number} {end_number} created successfully.")
-    return redirect("cycles:tag_setup")
+    return redirect("count:count_tag")
