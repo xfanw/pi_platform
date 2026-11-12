@@ -19,8 +19,9 @@
 # from apps.plants.models import Plant
 
 
-from access_control.app_functions import active_plant_roles, available_plants, is_global_manager
+from access_control.app_functions import active_plant_roles, available_plants, is_global_manager, is_plant_manager, my_sap_loc
 from access_control.models import RoleAction
+from count.models import CountIntakeException
 from cycles.models import PICycle
 
 # def portal_context(request):
@@ -217,6 +218,7 @@ def get_basic_info(request):
     # 2. Get Role Info
     global_admin = is_global_manager(curr_user)
     context["is_global_admin"] = global_admin
+    plant_admin = is_plant_manager(curr_user, plant)
     if global_admin:
         role_names = ["Global Admin"]
         curr_role = "Global Admin"
@@ -239,5 +241,15 @@ def get_basic_info(request):
         context["portal_last_closed"] = last_closed.name if last_closed else None
 
     context["cycle_ref"] = cycle
+    portal_pending_count = 0
+    if cycle:
+        count_ex_set = CountIntakeException.objects.filter(cycle=cycle)
+        if count_ex_set:
+            if not global_admin and not plant_admin:
+                my_sap_list = my_sap_loc(curr_user, plant)
+                count_ex_set = count_ex_set.filter(sap_location__code__in=my_sap_list)
+            portal_pending_count = count_ex_set.filter(status="Pending").count()
+    context["portal_pending_count"] = portal_pending_count
+
     # pprint(context)
     return context
