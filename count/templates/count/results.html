@@ -27,7 +27,7 @@
         {% endfor %}
       </select>
     </div>
-    <div><label>Source</label>
+    <div><label>Source <a href="{% url 'site_setting:sys_set_detail' %}?var_name=COUNT_SOURCE" rel='noopener noreferrer' target='_blank'><i class='text-primary fa fa-pen-to-square'></i></a></label>
       <select name="source">
         <option value="">All</option>
         {% for item in source_choices %}
@@ -48,7 +48,7 @@
     <tbody>{% for item in count_records %}<tr>
       <td><b>{{ item.part.part_number }}</b>{% if item.has_applied_correction %}<span class="chip corrected">Corrected</span>{% endif %}</td>
       <td class="desc" title="{{ item.part.description }}">{{ item.part.description }}</td>
-      <td><span class="chip">{{ item.sap_location.code }} / {{ item.sap_location.department }}</span></td>
+      <td><span class="chip">{{ item.sap_location.code }}</span> / {{ item.sap_location.department }}</td>
       <td>{{ item.physical_location.name|default:"—" }}</td>
       <td>{{ item.sub_location.name|default:"—" }}</td>
       <td class="mono">{{ item.tag_number|default:"—" }}</td>

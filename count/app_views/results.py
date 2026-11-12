@@ -39,7 +39,8 @@ def count_result(request):
     if search:
         has_search = True
         count_records = count_records.filter(
-            Q(raw_part_number__icontains=search)
+            Q(part__part_number__icontains=search)
+            | Q(part__description__icontains=search)
             | Q(tag_number__icontains=search)
             | Q(sap_location__code__icontains=search)
             | Q(sap_location__department__icontains=search)
@@ -54,7 +55,7 @@ def count_result(request):
 
     if source_filter:
         has_search = True
-        count_records = count_records.filter(Q(status__icontains=source_filter))
+        count_records = count_records.filter(Q(source__icontains=source_filter))
 
     context["search"] = search
     context["source_filter"] = source_filter
