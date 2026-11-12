@@ -4,13 +4,18 @@
 {% block body %}
 <div class="page-heading"><div><h1>Tag Ranges</h1><p class="page-sub">Assign tag ranges to the current PI for {{ plant_.ode }}.</p></div></div>
 
-<section class="tag-range-context {% if not cycle_ref %}disabled{% endif %} row">
-<div class='col-md-4'><span>Current PI only</span><h2>{% if cycle_ref %}{{ cycle_ref.name }}{% else %}No Open PI Cycle{% endif %}</h2></div>
-<div class='col-md-7'><h6 class='fw-bold {% if not cycle_ref %}text-danger{% else %} {% endif %}'>{% if cycle_ref %}These ranges validate tag entry only for this PI and are never carried to the next PI.{% else %}Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Tag Range setup. {% endif %}</h6>
+{% if not cycle_ref %}
+<section class="tag-range-context disabled row">
+<div class='col-md-4'><span>Current PI only</span><h2>No Open PI Cycle</h2></div>
+<div class='col-md-7'><h6 class='fw-bold text-danger'>Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Tag Range setup.</h6>
 </div>
 </section>
 
-{% if cycle_ref %}
+{% else %}
+<section class="tag-range-context">
+<div class='col-md-4'><span>Current PI only</span><h2>{{ cycle_ref.name }}</h2></div>
+</section>
+
 <section class="card location-entry-panel tag-entry-panel">
   <div class="pane">
     <div class="pane-title">Add Tag Range</div>
