@@ -70,7 +70,7 @@ def count_manual(request):
     sap_location_filter = search_data.get("sap_location", "").strip()
     location_filter = search_data.get("location", "").strip()
     sub_location_filter = search_data.get("sub_location", "").strip()
-    count_record_set = CountRecord.objects.filter(cycle=active_cycle, source="Manual")
+    count_record_set = CountRecord.objects.filter(cycle=active_cycle, source="Manual Key-in")
     has_search = False
     if search:
         has_search = True
@@ -169,8 +169,8 @@ def count_manual_create(request):
     if part_ref:
         CountRecord.objects.create(
             cycle=active_cycle_ref,
-            source="Manual",
-            source_record_key=f"{counter_name}_{curr_time}",
+            source="Manual Key-in",
+            source_record_key=f"{counter_name}_{curr_time.strftime('%Y%m%d_%H%M%S')}",
             sap_location=sap_location_ref.sap_location,
             physical_location=location_ref.physical_location,
             sub_location=sub_location_ref.sub_location if sub_location_ref else None,
@@ -188,7 +188,7 @@ def count_manual_create(request):
         CountIntakeException.objects.create(
             cycle=active_cycle_ref,
             raw_part_number=part_number,
-            source="Manual",
+            source="Manual Key-in",
             status="Pending",
             quantity=quantity,
             counter_name=counter_name,

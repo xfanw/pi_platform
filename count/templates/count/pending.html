@@ -3,7 +3,18 @@
 {% block title %}Pending Station | PI Platform{% endblock %}
 {% block body %}
 <div class="page-heading"><div><h1>Pending Station</h1><p class="page-sub">Unknown P/N count entries remain outside Count Results and variance until an authorized reviewer approves, maps or rejects them.</p></div></div>
+{% if not cycle_ref %}
+<section class="tag-range-context disabled row">
+  <div class='col-md-4'><span>Current PI only</span><h2>No Open PI Cycle</h2></div>
+  <div class='col-md-7'>
+    <h6 class='fw-bold text-danger'>Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Count:Manual Key-In. </h6>
+  </div>
+</section>
+{% else %}
+<section class="tag-range-context row">
+  <div class='col-md-4'><span>Current PI only</span><h2>{{ cycle_ref.name }}</h2></div>
 
+</section>
 <div class="cards">
   <div class="kpi"><div class="lbl">Awaiting Review</div><div class="val {% if pending_count %}neg{% endif %}">{{ pending_count }}</div><div class="sub">Current PI · your approved scope</div></div>
   <div class="kpi"><div class="lbl">Approved New Parts</div><div class="val">{{ approved_count }}</div></div>
@@ -44,11 +55,11 @@
       <td><span class="chip {% if item.status == 'Rejected' %}red{% endif %}">{{ item.status }}</span>{% if item.disposition_part %}<small>→ {{ item.disposition_part.part_number }}</small>{% endif %}{% if item.disposition_reason %}<small>{{ item.disposition_reason }}</small>{% endif %}</td>
       {% if may_review %}
       <td>
-        <button class="btn btn-sm btn-primary" onclick='add_part({{ item.id }})'>Add</button>
-        <button class="btn btn-sm btn-success" onclick='map_part({{ item.id }})'>Map</button>
-        <button class="btn btn-sm btn-danger" onclick='reject_part({{ item.id }})'>Reject</button>
+        <button class="btn btn-sm btn-primary" onclick='add_part("{{ item.id }}", "{{ item.raw_part_number }}")'>Add</button>
+        <button class="btn btn-sm btn-success" onclick='map_part("{{ item.id }}", "{{ item.raw_part_number }}")'>Map</button>
+        <button class="btn btn-sm btn-danger" onclick='reject_part("{{ item.id }}", "{{ item.raw_part_number }}")'>Reject</button>
       </td>{% endif %}
-    </tr>{% empty %}<tr><td colspan="11" class="mut">No Count Exceptions / Pending Items match these filters.</td></tr>{% endfor %}
+    </tr>{% endfor %}
     {% for item in count_ex_finished_set %}
     <tr>
       <td><b>{{ item.raw_part_number }}</b></td>
@@ -69,6 +80,7 @@
     </tbody>
   </table></div>
 </section>
+{% endif %}
 {% endblock %}
 {% block scripts %}
 <script src="{% static 'count/pending.js' %}?v=1.0"></script>

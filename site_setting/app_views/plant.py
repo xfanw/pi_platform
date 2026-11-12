@@ -32,6 +32,7 @@ def plant_setup(request):
     return render(request, "site_setting/plant_setup.html", context)
 
 
+@login_required
 def create_plant(request):
     curr_user = request.user
     can_act, msg = check_permission(curr_user, "", PERMISSION, True)

@@ -83,10 +83,7 @@ def part_create(request):
         messages.error(request, "Business Unit is required.")
         return redirect("cycles:part_setup")
 
-    part_ref = PartMaster.objects.filter(
-        cycle=active_cycle_ref,
-        part_number=part_number,
-    ).first()
+    part_ref = PartMaster.objects.filter(cycle=active_cycle_ref, part_number=part_number).first()
 
     if part_ref:
         messages.error(request, f"Part {part_number} already exists in current cycle.")

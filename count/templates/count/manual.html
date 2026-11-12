@@ -6,7 +6,7 @@
 
 <div class="page-heading">
   <div><h1>Manual Key-in</h1><p class="page-sub text-danger">This page served for manual count entry only. If you have tags, please use the Tag Key-in page instead.</p></div>
-  <a class="btn ghost" href="{% url 'core:home' %}">View Count Results</a>
+  <a class="btn btn-sm btn-primary" href="{% url 'core:home' %}">View Count Results</a>
   {% comment %} <a class="btn ghost" href="{% url 'portal:count-results' %}">View Count Results</a> {% endcomment %}
 </div>
 
@@ -20,9 +20,6 @@
 {% else %}
 <section class="tag-range-context row">
   <div class='col-md-4'><span>Current PI only</span><h2>{{ cycle_ref.name }}</h2></div>
-  <div class='col-md-7'>
-    <h6 class='fw-bold'>These part quantities are only for this PI and are never carried to the next PI.</h6>
-  </div>
 </section>
 
 <section class="card channel-entry-card">
