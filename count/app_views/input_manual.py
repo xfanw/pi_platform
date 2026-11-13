@@ -110,7 +110,7 @@ def count_manual_create(request):
 
     can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
     if not can_act:
-        messages.error(request, mark_safe(f"You do NOT have permission to create tag range. {msg}"))
+        messages.error(request, mark_safe(f"You do NOT have permission to manual key-in. {msg}"))
         return redirect("core:home")
 
     curr_time = datetime.now().astimezone()

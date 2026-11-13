@@ -93,13 +93,6 @@ class CountRecord(models.Model):
         ]
 
 
-class CycleTagDetail(TimeStampedModel):
-    tag_range = models.ForeignKey(CycleTagRange, on_delete=models.CASCADE, related_name="tag_details")
-    tag_number = models.BigIntegerField(unique=True)
-    count_record = models.ForeignKey(CountRecord, on_delete=models.PROTECT, related_name="tag_details", null=True, blank=True)
-    is_counted = models.BooleanField(default=False)
-
-
 class CountIntakeException(TimeStampedModel):
     # exception_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # idempotency_key = models.CharField(max_length=128, unique=True)
@@ -136,6 +129,46 @@ class CountIntakeException(TimeStampedModel):
                 name="counting_co_cycle_i_1cf034_idx",
             ),
         ]
+
+
+class CycleTagDetail(TimeStampedModel):
+    tag_range = models.ForeignKey(CycleTagRange, on_delete=models.CASCADE, related_name="tag_details")
+    tag_number = models.BigIntegerField(unique=True)
+    count_record = models.ForeignKey(CountRecord, on_delete=models.PROTECT, related_name="tag_details", null=True, blank=True)
+    exception_record = models.ForeignKey(
+        CountIntakeException, null=True, blank=True, on_delete=models.PROTECT, related_name="tag_details"
+    )
+    is_counted = models.BooleanField(default=False)
+
+    @property
+    def part_number(self):
+        if self.count_record:
+            return self.count_record.part.part_number
+        elif self.exception_record:
+            return self.exception_record.raw_part_number
+        return None
+
+    @property
+    def quantity(self):
+        if self.count_record:
+            return self.count_record.quantity
+        elif self.exception_record:
+            return self.exception_record.quantity
+        return None
+
+    @property
+    def counter_name(self):
+        if self.count_record:
+            return self.count_record.counter_name
+        elif self.exception_record:
+            return self.exception_record.counter_name
+        return None
+
+    @property
+    def pending_review(self):
+        if not self.count_record and self.exception_record:
+            return True
+        return False
 
 
 class CountCorrection(TimeStampedModel):
