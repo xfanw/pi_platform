@@ -83,8 +83,11 @@ def count_tag(request):
     context["sap_location_filter"] = curr_tag.tag_range.sap_location.code
     context["blank_tag_set"] = tag_set.filter(is_counted=False).order_by("tag_number")[:20]
     context["counted_tag_set"] = tag_set.filter(is_counted=True).order_by("count_record__entered_at")[:20]
-    context["curr_counter_list"] = CounterRoster.objects.filter(plant=curr_tag.tag_range.plant).filter(
-        Q(sap_location=curr_tag.tag_range.sap_location) | Q(sap_location__isnull=True)
+    context["curr_counter_list"] = list(
+        CounterRoster.objects.filter(plant=curr_tag.tag_range.plant, is_active=True)
+        .filter(Q(sap_location=curr_tag.tag_range.sap_location) | Q(sap_location__isnull=True))
+        .values_list("display_name", flat=True)
+        .distinct()
     )
     return render(request, "count/tag.html", context)
 
