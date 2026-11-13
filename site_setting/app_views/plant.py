@@ -114,8 +114,8 @@ def update_plant(request):
 @login_required
 def create_sap_location(request):
     curr_user = request.user
-    plant = context["plant_ref"]
     context = get_basic_info(request)
+    plant = context["plant_ref"]
     if not plant:
         messages.error(request, f"Plant {plant_code} does not exist.")
         return redirect("site_setting:plant_setup")
