@@ -43,7 +43,9 @@ def count_manual(request):
     )
     cycle_sub_locations = list(
         CycleSubLocation.objects.filter(cycle=active_cycle, is_active=True).values(
-            sub_name=F("sub_location__name"), loc_name=F("sub_location__physical_location__name")
+            sub_name=F("sub_location__name"),
+            loc_name=F("sub_location__physical_location__name"),
+            sap_code=F("sub_location__physical_location__sap_location__code"),
         )
     )
 

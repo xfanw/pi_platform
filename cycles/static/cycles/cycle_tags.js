@@ -69,7 +69,7 @@ $("#tag-add-location").on("change", function () {
         sub_elem.prop("disabled", false);
     }
     const filteredSubLocations = sub_location_list.filter(function (sub_location) {
-        return sub_location.loc_name === selected_location;
+        return sub_location.loc_name === selected_location && sub_location.sap_code === $("#sap_location").val();
     });
     $.each(filteredSubLocations, function (index, item) {
         sub_elem.append(
