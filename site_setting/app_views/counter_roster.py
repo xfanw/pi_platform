@@ -62,10 +62,12 @@ def counter_create(request):
         messages.error(request, "Employee ID and display name cannot be empty. ")
         return redirect("site_setting:counter_setup")
 
-    sap_location = SAPLocation.objects.filter(plant=plant, code=sap_location_id).first()
-    if not sap_location:
-        messages.error(request, "Selected SAP Location does NOT exist. ")
-        return redirect("site_setting:counter_setup")
+    sap_location = None
+    if sap_location_id:
+        sap_location = SAPLocation.objects.filter(plant=plant, code=sap_location_id).first()
+        if not sap_location:
+            messages.error(request, "Selected SAP Location does NOT exist. ")
+            return redirect("site_setting:counter_setup")
 
     curr_roster = CounterRoster.objects.filter(plant=plant, department=department_id, sap_location=sap_location).first()
     if curr_roster:
