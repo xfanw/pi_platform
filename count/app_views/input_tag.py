@@ -66,9 +66,11 @@ def count_tag(request):
         context["counted_tag_set"] = tag_set.filter(is_counted=True).order_by("count_record__entered_at")[:50]
         return render(request, "count/tag.html", context)
 
-    curr_tag = CycleTagDetail.objects.filter(tag_range__cycle=active_cycle, tag_number=tag_number, count_record__isnull=True).first()
+    curr_tag = CycleTagDetail.objects.filter(tag_range__cycle=active_cycle, tag_number=tag_number, is_counted=False).first()
     if not curr_tag:
-        messages.error(request, f"Tag number {tag_number} not found or already counted in cycle {active_cycle.name}.")
+        messages.error(
+            request, mark_safe(f"Tag number {tag_number} is <b>NOT found</b> or <b>already counted</b> in cycle {active_cycle.name}.")
+        )
         return render(request, "count/tag.html", context)
 
     #
