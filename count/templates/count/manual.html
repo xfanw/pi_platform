@@ -1,0 +1,99 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Manual Key-in | PI Platform{% endblock %}
+{% block body %}
+
+
+<div class="page-heading">
+  <div><h1>Manual Key-in</h1><p class="page-sub text-danger">This page served for manual count entry only. If you have tags, please use the Tag Key-in page instead.</p></div>
+  <a class="btn btn-sm btn-primary" href="{% url 'count:count_result' %}">View Count Results</a>
+  {% comment %} <a class="btn ghost" href="{% url 'portal:count-results' %}">View Count Results</a> {% endcomment %}
+</div>
+
+{% if not cycle_ref %}
+<section class="tag-range-context disabled row">
+  <div class='col-md-4'><span>Current PI only</span><h2>No Open PI Cycle</h2></div>
+  <div class='col-md-7'>
+    <h6 class='fw-bold text-danger'>Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Count:Manual Key-In. </h6>
+  </div>
+</section>
+{% else %}
+<section class="tag-range-context">
+  <div class='col-md-4'><span>Current PI only</span><h2>{{ cycle_ref.name }}</h2></div>
+</section>
+
+<section class="card channel-entry-card">
+  <div class="pane-title">Enter count</div>
+  <form method="post" class="row" id="count-entry-form" action="{% url 'count:count_manual_create' %}">
+    {% csrf_token %}
+    <div class="row">
+      <div class='col-md-3'><label>SAP Location</label>
+        <select id="sap_location" name="sap_location" class='form-control'><option value='' selected">-- Select --</option>
+        {% for item in cycle_sap_locations %}
+          <option value="{{ item.0 }}">{{ item.1 }} / {{ item.0 }}</option>
+        {% endfor %}
+        </select>
+      </div>
+      <div class='col-md-3'><label>Location</label>
+        <select class='form-control' id="location" name='location' required disabled>
+          <option value="" disabled selected>Select SAP Location first</option>
+        </select>
+      </div>
+      <div class='col-md-3'><label>Sub-location<span class='mut'> (optional)</span></label>
+        <select class='form-control' id="sub_location" name="sub_location" disabled>
+          <option value="" disabled selected>Select Location first</option>
+        </select>
+      </div>
+    </div>
+    <div class='row mt-2'>
+    <div class='col-md-3'><label>P/N</label><input name="part_number" id="part_number" maxlength="80" required disabled class='form-control'></div>
+    <div class='col-md-3'><label>Count Qty</label><input name="quantity" id="quantity" type="number" min="0" step="0.0001" required disabled class='form-control'></div>
+    <div class='col-md-3'><label>Counter<span class='mut'> (default: current user)</span></label><select name="counter_name" id="counter_name" class='form-control'><option value="">Select Counter</option>{% for item in counter_roster %}<option value="{{ item.display_name }} [{{ item.employee_id }}]">{{ item.display_name }} · {{ item.employee_id }}</option>{% endfor %}</select></div>
+    <div class='col-md-3'><label>Action</label><button class='btn btn-primary' id='add-part-button' type="submit" disabled>Submit Count</button></div>
+    </div>
+  </form>
+</section>
+
+<section class="card channel-filter-card">
+  <form method="get" class="inline filter-form" action="{% url 'count:count_manual' %}">
+    <div><label>Search location</label><input name="search" value="{{ search }}" placeholder="P/N, location or sub-location"></div>
+    <div><label>SAP Location</label>
+      <select name="sap_location">
+        <option value="">All</option>
+        {% for item in cycle_sap_locations %}
+        <option value="{{ item.0 }}" {% if sap_location_filter == item.0 %}selected{% endif %}>{{ item.1 }} / {{ item.0 }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class='btn btn-sm btn-primary' type="submit">Search</button><a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_manual' %}">Clear</a>
+  </form>
+</section>
+
+<section class="workspace">
+  <div class="card">
+    <div class="tag-table-scroll"><table><thead><tr><th>Part Number</th><th>SAP Location</th><th>Location</th><th>Sub-Location</th><th class="num">Qty</th><th>Counter</th><th></th></tr></thead><tbody>
+      {% for item in count_record_set %}
+      <tr>
+      <td class="mono">{{ item.part.part_number }}</td>
+      <td><span class='chip'>{{ item.sap_location.code }}</span></td>
+      <td>{{ item.physical_location.name }}</td>
+      <td>{% if item.sub_location %}{{ item.sub_location.name }}{% endif %}</td>
+      <td class="num">{{ item.quantity }}</td>
+      <td>{{ item.counter_name|default:"—" }}</td>
+      <td><button class='btn btn-sm btn-primary'>Edit</button></td>
+      {% comment %} <td><details><summary>Edit</summary><form method="post" action="{% url 'core:home' item.record_id %}" class="mini-correction-form">{% csrf_token %}<label>Correct P/N</label><input name="corrected_part_number" value="{{ item.effective_part_number }}"><label>Correct Qty</label><input name="corrected_quantity" type="number" min="0" step="0.0001" value="{{ item.effective_quantity }}"><label>Reason</label><input name="reason_code" value="Tag count correction" required><label>Comment</label><input name="comment" required><button type="submit">Submit Correction</button></form></details></td></tr> {% endcomment %}
+      {% empty %}<tr><td colspan="7" class="mut">No counted tags match the current filter.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+let location_list = {{cycle_physical_locations|safe}}
+let sub_location_list = {{cycle_sub_locations|safe}}
+let counter_roster_list = {{counter_roster_set|safe}}
+let plant_counter = {{plant_counter|safe}}
+</script>
+<script src="{% static 'count/manual.js' %}?v=1.0"></script>
+{% endblock %}

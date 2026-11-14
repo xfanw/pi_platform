@@ -1,0 +1,25 @@
+{% extends "portal/base.html" %}
+{% block title %}{{ page_title }} | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading">
+  <div><h1>{{ page_title }}</h1><p class="page-sub">{% if source == 'WMS' %}Load a controlled WMS extract. Rows use the same validation, idempotency and Pending Station controls as all other counts.{% else %}Upload a completed count workbook. Valid rows are retained while invalid rows are reported for correction.{% endif %}</p></div>
+  <a class="btn ghost" href="{% url 'portal:count-results' %}">View Count Results</a>
+</div>
+<section class="card channel-upload-card">
+  <div class="pane-title">{% if source == 'WMS' %}Import / Sync WMS Feed{% else %}Upload Completed Count Template{% endif %}</div>
+  <form method="post" enctype="multipart/form-data" class="channel-upload-form">{% csrf_token %}
+    <div><label>{% if source == 'WMS' %}WMS extract .xlsx{% else %}Completed .xlsx{% endif %}</label><input type="file" name="file" accept=".xlsx" required></div>
+    <div class="grow"><label>Batch note <span class="optional">optional</span></label><input name="note" maxlength="500" placeholder="Shift, department, source file or interface reference"></div>
+    <button type="submit">{% if source == 'WMS' %}Import / Sync{% else %}Upload &amp; Validate{% endif %}</button>
+    <a class="btn ghost" href="{% url 'portal:count-template' %}">Download Template</a>
+  </form>
+  <p class="mut">{% if source == 'WMS' %}Import or synchronize a controlled WMS extract through this channel. {% endif %}Every accepted row receives its own Count Record ID. Unknown P/Ns go to Pending Station. Loading the same file again creates a new batch, so reverse an incorrect batch before reloading it.</p>
+</section>
+<section class="card">
+  <div class="table-section-head"><div><h2>Batch History</h2><span class="mut">Latest 50 {{ page_title }} batches. Open a batch to inspect rows and edit results, or reverse it here.</span></div></div>
+  <div class="scroll"><table class="count-batch-history"><thead><tr><th>Batch</th><th>File / Note</th><th>Status</th><th class="num">Rows</th><th class="num">Accepted</th><th class="num">Pending</th><th class="num">Errors</th><th>Created</th><th>Actions</th></tr></thead><tbody>
+    {% for item in batches %}<tr class="{% if item.status == 'REVERSED' %}mut{% endif %}"><td class="mono">{{ item.batch_id|stringformat:'s'|slice:':8' }}</td><td>{{ item.source_filename|default:'—' }}{% if item.note %}<br><span class="mut">{{ item.note }}</span>{% endif %}</td><td><span class="chip {% if item.status == 'FAILED' or item.status == 'PARTIAL' %}red{% endif %}">{{ item.get_status_display }}</span></td><td class="num">{{ item.row_count }}</td><td class="num">{{ item.accepted_count }}</td><td class="num">{{ item.pending_count }}</td><td class="num {% if item.rejected_count %}neg{% endif %}">{{ item.rejected_count }}</td><td class="mut">{{ item.created_at|date:'Y-m-d H:i' }} · {{ item.created_by.username|default:'system' }}</td><td><div class="batch-row-actions"><a class="btn ghost small" href="{% url 'portal:count-batch-detail' item.batch_id %}">Open Detail</a>{% if item.status != 'REVERSED' and item.status != 'PROCESSING' %}<form method="post" action="{% url 'portal:count-batch-reverse' item.batch_id %}" onsubmit="return confirm('Reverse this entire batch? Its accepted records will stop affecting Count Results.');">{% csrf_token %}<input type="hidden" name="row_version" value="{{ item.row_version }}"><button class="btn danger small" type="submit">Reverse</button></form>{% endif %}</div></td></tr>
+    {% empty %}<tr><td colspan="9" class="mut">No {{ page_title }} batches yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

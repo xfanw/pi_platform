@@ -1,0 +1,104 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}PI Cycles | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading">
+  <div><h1>PI Cycles</h1><p class="page-sub">Create and manage physical inventory cycles for {{ plant.code }}.</p></div>
+</div>
+
+{% if open_cycle %}
+<section class="card current-cycle">
+  <div><span class="pane-title">Current PI</span><h2>{{ open_cycle.name }} <span class="cyclechip open">Open</span></h2></div>
+  <div class="cycle-facts">
+    <span>Opened <b>{{ open_cycle.opened_at|date:'Y-m-d H:i' }}</b></span>
+    <span>By <b>{{ open_cycle.opened_by.username|default:'—' }}</b></span>
+    <span>SAP Locations <b>{{ open_cycle.sap_location_scope.count }}</b></span>
+    <span>Physical Locations <b>{{ open_cycle.physical_location_scope.count }}</b></span>
+  </div>
+  <div class="cycle-close-panel">
+  {% if may_manage_cycles %}
+    {% if close_final_capture %}
+      <p><b>5-Day Final (= Close Final) ready:</b> {{ close_final_capture.name }}. Undecided non-zero lines will open automatically in Follow-up.</p>
+      {% if may_close %}
+        <form method="post" onsubmit="return confirm('Close this PI? Count, Audit and Variance become read-only, and unresolved Close Final lines move to Follow-up.');">
+        {% csrf_token %}<input type="hidden" name="action" value="close"><input type="hidden" name="cycle_id" value="{{ open_cycle.pk }}">
+        <button type="submit" class="btn btn-sm btn-outline-danger">Close this PI</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <p><b>Close is not ready.</b> Create the 5-Day Final (= Close Final) after clearing every update request. Individual Post / Not Post decisions are not required.</p>
+      {% comment %} {% if portal_can_view_captures %}<a class="btn ghost" href="{% url 'captures:history' %}">Open Capture History</a>{% endif %} {% endcomment %}
+      {% if portal_can_view_captures %}<a class="btn ghost" href="{% url 'core:home' %}">Open Capture History</a>{% endif %}
+    {% endif %}
+    {% if close_blockers %}<details><summary>{{ close_blockers|length }} close readiness blocker{{ close_blockers|length|pluralize }}</summary><ul>{% for blocker in close_blockers %}<li>{{ blocker }}</li>{% endfor %}</ul></details>{% endif %}
+  {% endif %}
+  </div>
+</section>
+{% elif may_manage_cycles %}
+  <form method="post" class="card cycle-create" id="cycle-create-form" action="{% url 'cycles:create_cycle' %}">
+    {% csrf_token %}
+    <div class="pane-title">Create new PI</div>
+    <div class="cycle-name-field"><label>PI Name</label><input name="cycle_name" id="cycle_name" required maxlength="120" value="{{ cycle_holder }}"></div>
+    <div class="cycle-scope-grid">
+      <section>
+        <div class="scope-head"><h2>1. SAP Locations</h2><span><button type="button" class="text-action" onclick="setChecks('sap_location_ids', true)">Select all</button> · <button type="button" class="text-action" onclick="setChecks('sap_location_ids', false)">Unselect all</button></span></div>
+        <div class="check-panel">
+          {% for item in sap_locations %}<label>
+          <input type="checkbox" name="sap_location_ids" value="{{ item.pk }}" checked> {{ item.code }} - {{ item.department }}</label>
+          {% empty %}<p class="mut">No SAP Locations. Complete Plant Setup first.</p><a class="btn btn-sm btn-primary" href="{% url 'site_setting:plant_setup' %}">Open Plant Setup</a>{% endfor %}
+        </div>
+      </section>
+      <section>
+        <div class="scope-head"><h2>2. Physical Locations</h2><span><button type="button" class="text-action" onclick="setChecks('location_ids', true)">Select all</button> · <button type="button" class="text-action" onclick="setChecks('location_ids', false)">Unselect all</button></span></div>
+        <div class="check-panel">
+          {% for item in locations %}<label>
+          <input type="checkbox" name="location_ids" value="{{ item.pk }}" checked> {{item.sap_location.code}} / {{ item.name }}</label>
+          {% empty %}<p class="mut">No physical locations configured.</p>
+          {% if sap_locations %}<a class="btn btn-sm btn-primary" href="{% url 'site_setting:location_setup' %}">Open Location Setup</a>{% endif %}
+          {% endfor %}
+        </div>
+      </section>
+      <section>
+        <div class="scope-head"><h2>3. Sub-locations</h2><span><button type="button" class="text-action" onclick="setChecks('sub_location_ids', true)">Select all</button> · <button type="button" class="text-action" onclick="setChecks('sub_location_ids', false)">Unselect all</button></span></div>
+        <div class="check-panel">
+        {% for item in sub_locations %}
+          <label><input type="checkbox" name="sub_location_ids" value="{{ item.pk }}" checked> {{item.physical_location.name}} / {{ item.name }}</label>
+          {% empty %}<p class="mut">Optional. No sub-locations configured.</p>
+          {% if locations %}<a class="btn btn-sm btn-outline-primary" href="{% url 'site_setting:sub_location_setup' %}">Open Sub-Location Setup</a>{% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+    <div class="flash warn"><b>Fresh every PI:</b> PN List, Exclude PN List, Tag Range, SAP Book Inventory and transactional records are not carried.</div>
+    <div class='row'>
+    <div class='col-md-2'>
+    <button class='btn btn-primary' type="button" {% if not sap_locations or not locations %}disabled{% endif %} onclick="review_cycle()">Review before creating</button>
+    </div>
+    </div>
+  </form>
+{% endif %}
+
+<section class="card">
+  <h2>Cycle history</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>PI</th><th>Status</th><th>Opened</th><th>Closed</th><th class="center">SAP</th><th class="center">Locations</th><th>Reports &amp; Follow-up</th></tr></thead>
+    <tbody>{% for item in cycle_history %}
+      <tr>
+      <td><b>{{ item.name }}</b></td>
+      <td><span class="cyclechip {% if item.status == 'OPEN' %}open{% else %}closed{% endif %}">{{ item.status }}</span></td>
+      <td class="mut">{{ item.opened_at|date:'Y-m-d H:i'|default:'-- --' }}{% if item.opened_by %} · {{ item.opened_by.username }}{% endif %}</td>
+      <td class="mut">{{ item.closed_at|date:'Y-m-d H:i'|default:'-- --' }}</td>
+      <td class="center">{{ item.sap_location_scope.count }}</td>
+      <td class="center">{{ item.physical_location_scope.count }}</td>
+      <td>{% if item.status == 'CLOSED' %}{% if item.final_capture and portal_can_view_captures %}<a href="{% url 'captures:detail' item.final_capture.capture_id %}">View Final Capture</a> · <a href="{% url 'captures:excel' item.final_capture.capture_id %}">Download Variance + Count Excel</a>{% else %}<span class="mut">Archived reports unavailable</span>{% endif %}{% if portal_can_view_follow_up and item.follow_up_count %} · <a href="{% url 'follow_up:dashboard' %}?cycle={{ item.pk }}">Follow-up {{ item.follow_up_open_count }}/{{ item.follow_up_count }} open</a>{% endif %}{% else %}<span class="mut">Available after close</span>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="7" class="mut">No PI Cycles yet.</td>
+    </tr>
+    {% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{% static 'cycles/cycles.js'%}?v=1.0"></script>
+{% endblock %}

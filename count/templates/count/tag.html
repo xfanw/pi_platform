@@ -1,0 +1,107 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Tag Key-in | PI Platform{% endblock %}
+{% block body %}
+
+
+<div class="page-heading">
+  <div><h1>Tag Key-in</h1><p class="page-sub text-danger">This page served for tag entry only. If you do not have tags, please use the Manual Key-in page instead.</p></div>
+  <a class="btn btn-sm btn-primary" href="{% url 'count:count_result' %}">View Count Results</a>
+</div>
+
+{% if not cycle_ref %}
+<section class="tag-range-context disabled row">
+  <div class='col-md-4'><span>Current PI only</span><h2>No Open PI Cycle</h2></div>
+  <div class='col-md-7'>
+    <h6 class='fw-bold text-danger'>Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Count:Tag Key-in. </h6>
+  </div>
+</section>
+{% else %}
+<section class="tag-range-context">
+  <div class='col-md-4'><span>Current PI only</span><h2>{{ cycle_ref.name }}</h2></div>
+</section>
+
+<section class="card channel-entry-card">
+  <div class="pane-title">Enter count</div>
+  <form method="post" class="count-entry-grid" id="count-entry-form" action="{% url 'count:count_tag_create' %}">
+    {% csrf_token %}
+    <div><label>Tag Number <span class="optional">Search Tags</span></label>
+      <div class='input-group'>
+        <input class="form-control" name="tag_number" id="count-tag-number" maxlength="80" required value="{{ tag_number }}">
+        <button class='btn btn-primary' type="button" id="search-tag-btn" onclick="search_tag()">&rArr;</button>
+      </div>
+    </div>
+    <div><label>SAP Location</label><input class="form-control" id="sap_location" disabled placeholder="Input/Select Tag" value="{{ curr_sap_code }}"></div>
+    <div><label>Location</label><input class='form-control' id="physical_location" disabled placeholder="Input/Select Tag" value="{{ curr_location }}"></div>
+    <div><label>Sub Location</label><input class='form-control' id="sub_location" disabled placeholder="Input/Select Tag" value="{{ curr_sub_location }}"></div>
+    <div><label>P/N</label><input name="part_number" id="part_number" class='form-control' maxlength="80" required ></div>
+    <div><label>Count Qty</label><input name="quantity" type="number" class='form-control' min="0" step="0.0001" required></div>
+    <div><label>Counter</label>
+      <select name="counter_name" class='form-control'>
+        <option value="">Select Counter</option>
+        {% for item in curr_counter_list %}
+        <option value="{{ item }}">{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><label>Action</label><button class='btn btn-primary' type="submit">Submit Count</button></div>
+  </form>
+</section>
+
+<section class="card channel-filter-card">
+  <form method="get" class="inline filter-form">
+    <div><label>Search tag / P/N / location</label><input name="search" value="{{ search }}" placeholder="Tag, P/N, location or sub-location"></div>
+    <div><label>SAP Location</label>
+      <select name="sap_location">
+        <option value="">All</option>
+        {% for item in cycle_sap_locations %}
+        <option value="{{ item }}" {% if sap_location_filter == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-sm btn-primary" type="submit">Search</button><a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_tag' %}">Clear</a>
+  </form>
+</section>
+
+<section class="tag-workspace">
+  <div class="card tag-pane">
+    <div class="table-section-head"><div><h2>Blank Tags </div><span class="chip">{{ blank_tag_set|length }} shown</span></h2></div>
+    <div class="tag-table-scroll"><table><thead><tr><th>Tag</th><th>SAP</th><th>Location</th><th>Sub Location</th><th></th></tr></thead><tbody>
+      {% for item in blank_tag_set %}
+      <tr>
+        <td class="mono">{{ item.tag_number }}</td>
+        <td>{{ item.tag_range.sap_location.code }}</td>
+        <td>{{ item.tag_range.physical_location.name }}</td>
+        <td>{{ item.tag_range.sub_location.name }}</td>
+      <td><button type="button" class="btn btn-sm btn-primary" onclick="search_tag('{{ item.tag_number }}')">Count</button></td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="mut">No blank tags match the current filter.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="card tag-pane">
+    <div class="table-section-head"><div><h2>Counted Tags</h2><span class="mut">Current corrected values shown; originals remain immutable</span></div><span class="chip">{{ counted_tag_set|length }} shown</span></div>
+    <div class="tag-table-scroll"><table><thead><tr><th>Tag</th><th>SAP / Location</th><th>P/N</th><th class="num">Qty</th><th>Counter</th><th></th></tr></thead><tbody>
+      {% for item in counted_tag_set %}
+      <tr>
+      <td class="mono">{{ item.tag_number }}</td>
+      <td><span class='chip'>{{ item.tag_range.sap_location.code}}</span><br><span class="mut">{{ item.tag_range.physical_location.name }} / {{ item.tag_range.sub_location.name }}</span></td>
+      <td>{% if item.pending_review %}
+        <a class="btn btn-sm btn-outline-danger" href = "{% url 'count:pending_station' %}">{{ item.part_number }} </a>
+      {% else %}
+        {{ item.part_number }}
+      {% endif %}
+      </td>
+      <td class="num">{{ item.quantity }}</td>
+      <td>{{ item.counter_name|default:"—" }}</td>
+      <td><button type="button" class="btn btn-sm btn-primary" onclick="search_tag('{{ item.tag_number }}')">Edit</button>
+      </td>
+      {% comment %} <td><details><summary>Edit</summary><form method="post" action="{% url 'portal:count-record-correct' item.record_id %}" class="mini-correction-form">{% csrf_token %}<label>Correct P/N</label><input name="corrected_part_number" value="{{ item.effective_part_number }}"><label>Correct Qty</label><input name="corrected_quantity" type="number" min="0" step="0.0001" value="{{ item.effective_quantity }}"><label>Reason</label><input name="reason_code" value="Tag count correction" required><label>Comment</label><input name="comment" required><button type="submit">Submit Correction</button></form></details></td></tr> {% endcomment %}
+      {% empty %}<tr><td colspan="6" class="mut">No counted tags match the current filter.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'count/tag.js' %}?v=1.0"></script>
+{% endblock %}

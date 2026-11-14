@@ -1,0 +1,87 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Pending Station | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading"><div><h1>Pending Station</h1><p class="page-sub">Unknown P/N count entries remain outside Count Results and variance until an authorized reviewer approves, maps or rejects them.</p></div></div>
+{% if not cycle_ref %}
+<section class="tag-range-context disabled row">
+  <div class='col-md-4'><span>Current PI only</span><h2>No Open PI Cycle</h2></div>
+  <div class='col-md-7'>
+    <h6 class='fw-bold text-danger'>Create or open a <a class='btn btn-sm btn-danger fw-bold' href='{% url "cycles:cycles" %}'>PI Cycle</a> to enable Pending Station. </h6>
+  </div>
+</section>
+{% else %}
+<section class="tag-range-context">
+  <div class='col-md-4'><span>Current PI only</span><h2>{{ cycle_ref.name }}</h2></div>
+
+</section>
+<div class="cards">
+  <div class="kpi"><div class="lbl">Awaiting Review</div><div class="val {% if pending_count %}neg{% endif %}">{{ pending_count }}</div><div class="sub">Current PI · your approved scope</div></div>
+  <div class="kpi"><div class="lbl">Approved New Parts</div><div class="val">{{ approved_count }}</div></div>
+  <div class="kpi"><div class="lbl">Mapped to existing P/N</div><div class="val">{{ mapped_count }}</div></div>
+  <div class="kpi"><div class="lbl">Rejected</div><div class="val">{{ rejected_count }}</div></div>
+  <div class="kpi"><div class="lbl">Total</div><div class="val">{{ total_count }}</div></div>
+</div>
+
+<section class="card search-card">
+  <div class="search-title">Filter Pending Station</div>
+  <form method="get" class="frow">
+    <div class="field-grow"><label>Search</label><input type="search" name="search" value="{{ search }}" placeholder="P/N, SAP, location, sub-location, tag or counter"></div>
+    <div><label>Status <a href="{% url 'site_setting:sys_set_detail' %}?var_name=COUNT_EXCEPTION_STATUS" rel='noopener noreferrer' target='_blank'><i class='text-primary fa fa-pen-to-square'></i></a></label>
+      <select name="status">
+        <option value="" {% if status_filter == '' %}selected{% endif %}>All history</option>
+        {% for value in status_choices %}
+        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class='btn btn-sm btn-primary' type="submit">Apply</button><a class="btn btn-sm btn-outline-primary" href="{% url 'count:pending_station' %}">Clear</a>
+  </form>
+</section>
+
+<section class="card pending-card">
+  <div class="table-section-head"><div><h2>Count intake exceptions</h2><span class="mut">{{ total }} record(s){% if total > 300 %} · showing first 300{% endif %}</span></div></div>
+  <div class="scroll"><table class="pending-table"><thead><tr><th>Raw P/N</th><th>Source</th><th>SAP / Ownership</th><th>Location</th><th>Sub Location</th><th>Tag</th><th class="num">Qty</th><th>Counter</th><th>Entered</th><th>Status / disposition</th>{% if may_review %}<th>Review</th>{% endif %}</tr></thead>
+    <tbody>{% for item in count_ex_pending_set %}<tr>
+      <td><b>{{ item.raw_part_number }}</b></td>
+      <td>{{ item.source }}</td>
+      <td><span class="chip">{{ item.sap_location.code }}</span> {{ item.sap_location.department }}</td>
+      <td>{{ item.physical_location.name|default:"—" }}</td>
+      <td>{{ item.sub_location.name|default:"—" }}</td>
+      <td class="mono">{{ item.tag_number|default:"—" }}</td>
+      <td class="num">{{ item.quantity|floatformat:-4 }}</td>
+      <td>{{ item.counter_name|default:"—" }}</td>
+      <td class="mut">{{ item.created_at|date:"Y-m-d H:i" }}<br>{{ item.created_by.username|default:"system" }}</td>
+      <td><span class="chip {% if item.status == 'Rejected' %}red{% endif %}">{{ item.status }}</span>{% if item.disposition_part %}<small>→ {{ item.disposition_part.part_number }}</small>{% endif %}{% if item.disposition_reason %}<small>{{ item.disposition_reason }}</small>{% endif %}</td>
+      {% if may_review %}
+      <td>
+        <button class="btn btn-sm btn-primary" onclick='add_part("{{ item.id }}", "{{ item.raw_part_number }}")'>Add</button>
+        <button class="btn btn-sm btn-success" onclick='map_part("{{ item.id }}", "{{ item.raw_part_number }}")'>Map</button>
+        <button class="btn btn-sm btn-danger" onclick='reject_part("{{ item.id }}", "{{ item.raw_part_number }}")'>Reject</button>
+      </td>{% endif %}
+    </tr>{% endfor %}
+    {% for item in count_ex_finished_set %}
+    <tr>
+      <td><b>{{ item.raw_part_number }}</b></td>
+      <td>{{ item.source }}</td>
+      <td><span class="chip">{{ item.sap_location.code }}</span> {{ item.sap_location.department }}</td>
+      <td>{{ item.physical_location.name|default:"—" }}</td>
+      <td>{{ item.sub_location.name|default:"—" }}</td>
+      <td class="mono">{{ item.tag_number|default:"—" }}</td>
+      <td class="num">{{ item.quantity|floatformat:-4 }}</td>
+      <td>{{ item.counter_name|default:"—" }}</td>
+      <td class="mut">{{ item.created_at|date:"Y-m-d H:i" }}<br>{{ item.created_by.username|default:"system" }}</td>
+      <td><span class="chip {% if item.status == 'Rejected' %}red{% endif %}">{{ item.status }}</span>{% if item.disposition_part %}<small>→ {{ item.disposition_part.part_number }}</small>{% endif %}{% if item.disposition_reason %}<small>{{ item.disposition_reason }}</small>{% endif %}</td>
+      {% if may_review %}
+      <td class="mut">Reviewed</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'count/pending.js' %}?v=1.0"></script>
+{% endblock %}
