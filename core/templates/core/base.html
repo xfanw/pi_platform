@@ -146,15 +146,15 @@
     <div class="sec">Admin</div>
     <div class="nav-items">
       {% if "Admin.Dropdown Management" in page_access_list %}<a href="{% url 'site_setting:sys_set' %}" class="{% if request.resolver_match.url_name == 'sys_set' or request.resolver_match.url_name == 'sys_set_detail' %}on{% endif %}">Dropdown Management</a>{% endif %}
-      {% if user.is_superuser %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'routing' %}on{% endif %}">Notification Routing</a>{% endif %}
-      {% if user.is_superuser %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'system-readiness' %}on{% endif %}">System Readiness</a>{% endif %}
+      {% comment %} {% if user.is_superuser %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'routing' %}on{% endif %}">Notification Routing</a>{% endif %} {% endcomment %}
+      {% comment %} {% if user.is_superuser %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'system-readiness' %}on{% endif %}">System Readiness</a>{% endif %} {% endcomment %}
       
       {% if "Admin.User Management" in page_access_list %}<a href="{% url 'access_control:user_list' %}" class="{% if request.resolver_match.url_name == 'user_list' or request.resolver_match.url_name == 'user_detail' %}on{% endif %}">User Management</a>{% endif %}
       {% comment %} {% if "Admin.Bulk People Onboarding" in page_access_list %}<a href="{% url 'access_control:user_onboading' %}" class="{% if request.resolver_match.url_name == 'user_onboarding' or request.resolver_match.url_name == 'onboarding_batch' %}on{% endif %}">Bulk People Onboarding</a>{% endif %} {% endcomment %}
       {% if "Admin.Role & Permissions" in page_access_list %}<a href="{% url 'access_control:role_list' %}" class="{% if request.resolver_match.url_name == 'role_list' or request.resolver_match.url_name == 'role_detail' %}on{% endif %}">Roles &amp; Permissions</a>{% endif %}
-      {% if user.is_superuser %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.namespace == 'access_control' and request.resolver_match.url_name == 'history' %}on{% endif %}">Access History</a>{% endif %}
+      {% comment %} {% if user.is_superuser %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.namespace == 'access_control' and request.resolver_match.url_name == 'history' %}on{% endif %}">Access History</a>{% endif %} {% endcomment %}
       
-      {% if user.is_superuser %}<a href="{% url 'admin:index' %}">Database Administration</a>{% endif %}
+      {% comment %} {% if user.is_superuser %}<a href="{% url 'admin:index' %}">Database Administration</a>{% endif %} {% endcomment %}
     </div>
     {% endif %}
   </nav>
