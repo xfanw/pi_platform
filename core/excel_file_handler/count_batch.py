@@ -38,9 +38,9 @@ def count_excel_bytes(plant):
 
 
 @transaction.atomic
-def count_batch_upload(curr_file, sheet_name, plant, cycle, actor):
-    from cycles.models import TempPartMain, TempPartDetail, PartMaster
-    from core.constants import COUNT_BATCH_HEADERS
+def count_batch_upload(curr_file, sheet_name, note, cycle, actor):
+    from cycles.models import CountLoadBatch, TempCountLoadDetail, PartMaster
+    from site_setting.models import SAPLocation, PhysicalLocation, SubLocation
 
     if not curr_file:
         return "error", "Choose a completed .xlsx file."
@@ -61,7 +61,7 @@ def count_batch_upload(curr_file, sheet_name, plant, cycle, actor):
 
     sheet = workbook[sheet_name]
     try:
-        batch = TempPartMain.objects.create(
+        batch = CountLoadBatch.objects.create(
             cycle=cycle,
             source_filename=curr_file.name[:255],
             created_by=actor,
@@ -93,7 +93,7 @@ def count_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                     curr_error.append("MAP$ must be a valid number. ")
 
                 part_list.append(
-                    TempPartDetail(
+                    TempCountLoadDetail(
                         cycle=cycle,
                         part_number=curr_part_number,
                         description=curr_desc,
@@ -107,7 +107,7 @@ def count_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                     )
                 )
 
-        TempPartDetail.objects.bulk_create(part_list)
+        TempCountLoadDetail.objects.bulk_create(part_list)
     except Exception as e:
         workbook.close()
         return "error", f"Error batch onboarding, {clean_errors(e)}"
@@ -117,9 +117,9 @@ def count_batch_upload(curr_file, sheet_name, plant, cycle, actor):
 
 
 def count_batch_validate(batch):
-    from cycles.models import TempPartDetail
+    from cycles.models import TempCountLoadDetail
 
-    part_set = TempPartDetail.objects.filter(batch=batch)
+    part_set = TempCountLoadDetail.objects.filter(batch=batch)
     for part in part_set:
         new_error = False
 
@@ -132,7 +132,7 @@ def count_batch_validate(batch):
         if new_error:
             part.save()
 
-    status = TempPartDetail.objects.filter(batch=batch).aggregate(
+    status = TempCountLoadDetail.objects.filter(batch=batch).aggregate(
         row_count=Count("id"),
         ready_count=Count("id", filter=Q(is_valid=True)),
         error_count=Count("id", filter=Q(is_valid=False)),

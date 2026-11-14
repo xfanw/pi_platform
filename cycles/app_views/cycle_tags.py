@@ -261,7 +261,7 @@ def tag_file_upload(request):
         return redirect("cycles:tag_batch", batch_id=batch.id)
     except Exception as e:
         messages.error(request, f"File Validation Error, {clean_errors(e)}")
-        return redirect("cycles:tag_batch", batch_id=batch.id)
+        return redirect("cycles:tag_setup")
 
 
 @login_required

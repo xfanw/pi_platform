@@ -1,7 +1,9 @@
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from core.excel_file_handler.count_batch import count_batch_upload, count_batch_validate, count_excel_bytes
-from count.models import CountRecord
+from count.models import CountRecord, TempCountLoadDetail, CountLoadBatch
+from cycles.app_models.inventory_models import PartMaster, PartMaster, TempPartDetail, TempPartDetail, TempPartMain
+from cycles.app_models.inventory_models import TempPartMain
 
 PERMISSION = "Count.Count Result Upload"
 
@@ -96,15 +98,15 @@ def count_file_upload(request):
     can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
     if not can_act:
         messages.error(request, mark_safe(f"You do NOT have permission to upload file. {msg}"))
-        return redirect("cycles:count_setup")
+        return redirect("cycles:count_upload")
 
     try:
         status, msg = count_batch_upload(
-            request.FILES.get("count_file"), "Count Upload", plant=plant, cycle=active_cycle_ref, actor=request.user
+            request.FILES.get("file"), "Count Upload", note=request.POST.get("note", ""), cycle=active_cycle_ref, actor=request.user
         )
         if status == "error":
             messages.error(request, msg)
-            return redirect("cycles:count_setup")
+            return redirect("cycles:count_upload")
         # TODO: Keep Log
 
         batch = msg
@@ -124,7 +126,7 @@ def count_file_upload(request):
         return redirect("cycles:count_batch", batch_id=batch.id)
     except Exception as e:
         messages.error(request, f"File Validation Error, {clean_errors(e)}")
-        return redirect("cycles:count_batch", batch_id=batch.id)
+        return redirect("cycles:count_upload")
 
 
 @login_required
@@ -139,13 +141,13 @@ def count_batch(request, batch_id):
     can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
     if not can_act:
         messages.error(request, mark_safe(f"You do NOT have permission to view counter roster. {msg}"))
-        return redirect("cycles:count_setup")
+        return redirect("cycles:count_upload")
 
-    batch_ref = TempPartMain.objects.filter(id=batch_id).first()
+    batch_ref = CountLoadBatch.objects.filter(id=batch_id).first()
     if not batch_ref:
         messages.error(request, "Batch doesn NOT exist. ")
     context["batch"] = batch_ref
-    context["rows"] = TempPartDetail.objects.filter(batch=batch_ref).order_by("id")
+    context["rows"] = TempCountLoadDetail.objects.filter(batch=batch_ref).order_by("id")
     return render(request, "inventory/count_batch.html", context)
 
 
@@ -166,7 +168,7 @@ def count_batch_confirm(request, batch_id):
     can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
     if not can_act:
         messages.error(request, mark_safe(f"You do NOT have permission to create part lists. {msg}"))
-        return redirect("cycles:count_setup")
+        return redirect("cycles:count_upload")
 
     curr_time = datetime.now().astimezone()
     batch_ref = TempPartMain.objects.filter(id=batch_id).first()
