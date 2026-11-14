@@ -10,10 +10,10 @@ from core.app_functions import clean_errors
 from core.constants import MAX_FILE_BYTES, TAG_HEADERS
 from core.excel_file_handler._excel_helper_function import text_val
 
-from cycles.models import CyclePhysicalLocation, CycleSAPLocation, CycleSubLocation
-
 
 def tag_range_excel_bytes(plant, cycle):
+    from cycles.models import CycleSubLocation
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Tag Ranges"
@@ -47,7 +47,7 @@ def tag_range_excel_bytes(plant, cycle):
 
 @transaction.atomic
 def tag_batch_upload(curr_file, sheet_name, plant, cycle, actor):
-    from cycles.models import TempCycleTagMain, TempCycleTagDetail
+    from cycles.models import TempCycleTagMain, TempCycleTagDetail, CyclePhysicalLocation, CycleSAPLocation, CycleSubLocation
 
     if not curr_file:
         return "error", "Choose a completed .xlsx file."

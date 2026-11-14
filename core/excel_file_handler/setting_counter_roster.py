@@ -11,10 +11,10 @@ from core.app_functions import clean_errors, swap_dict_key_value
 from core.constants import MAX_FILE_BYTES, COUNTER_HEADERS
 from core.excel_file_handler._excel_helper_function import gen_dv_dict, text_val
 
-from site_setting.models import SAPLocation
-
 
 def counter_roster_excel_bytes(plant):
+    from site_setting.models import SAPLocation
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Counter"
@@ -82,6 +82,7 @@ def counter_roster_excel_bytes(plant):
 @transaction.atomic
 def counter_batch_upload(curr_file, sheet_name, *, plant, actor):
     from access_control.models import CounterOnboardingRow, UserOnboardingBatch
+    from site_setting.models import SAPLocation
 
     if not curr_file:
         return "error", "Choose a completed .xlsx file."

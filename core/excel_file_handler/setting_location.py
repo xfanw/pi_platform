@@ -13,10 +13,10 @@ from core.app_functions import clean_errors, swap_dict_key_value
 from core.constants import MAX_FILE_BYTES, LOC_HEADERS, SUB_LOC_HEADERS
 from core.excel_file_handler._excel_helper_function import gen_dv_dict, gen_dv_list, text_val
 
-from site_setting.models import SAPLocation, PhysicalLocation, SAPLocation
-
 
 def location_excel_bytes(plant):
+    from site_setting.models import SAPLocation
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Locations"
@@ -55,7 +55,7 @@ def location_excel_bytes(plant):
 
 @transaction.atomic
 def location_batch_upload(curr_file, sheet_name, *, plant, actor):
-    from site_setting.models import TempLocationDetail, TempLocationMain
+    from site_setting.models import TempLocationDetail, TempLocationMain, SAPLocation
 
     if not curr_file:
         return "error", "Choose a completed .xlsx file."
@@ -203,7 +203,7 @@ def sub_location_excel_bytes(plant):
 
 @transaction.atomic
 def sub_location_batch_upload(curr_file, sheet_name, *, plant, actor):
-    from site_setting.models import TempSubLocationDetail, TempSubLocationMain
+    from site_setting.models import TempSubLocationDetail, TempSubLocationMain, SAPLocation, PhysicalLocation
 
     if not curr_file:
         return "error", "Choose a completed .xlsx file."

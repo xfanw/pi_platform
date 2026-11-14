@@ -21,7 +21,7 @@
 
 <section class="card channel-upload-card">
   <div class="pane-title">Upload Completed Count Template</div>
-  <form method="post" enctype="multipart/form-data" class="channel-upload-form">{% csrf_token %}
+  <form method="post" enctype="multipart/form-data" class="channel-upload-form" action="{% url 'count:count_file_upload' %}">{% csrf_token %}
     <div><label>Completed .xlsx</label><input type="file" name="file" accept=".xlsx" required></div>
     <div class="grow"><label>Batch note <span class="optional">optional</span></label><input name="note" maxlength="500" placeholder="Shift, department, source file or interface reference"></div>
     <button type="submit" class="btn btn-sm btn-primary">Upload</button>

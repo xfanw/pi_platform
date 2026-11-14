@@ -8,21 +8,6 @@ from cycles.models import PartMaster, PICycle, CycleTagRange
 from site_setting.models import PhysicalLocation, SAPLocation, SubLocation
 from django.contrib.auth.models import User
 
-# class BatchStatus(models.TextChoices):
-#     PROCESSING = "PROCESSING", "Processing"
-#     ACCEPTED = "ACCEPTED", "Accepted"
-#     PARTIAL = "PARTIAL", "Partially Accepted"
-#     REVERSED = "REVERSED", "Reversed"
-#     FAILED = "FAILED", "Failed"
-
-
-# class ExceptionStatus(models.TextChoices):
-#     PENDING = "PENDING", "Pending"
-#     APPROVED_NEW_PART = "APPROVED_NEW_PART", "Approved New Part"
-#     MAPPED = "MAPPED", "Mapped to Existing Part"
-#     REJECTED = "REJECTED", "Rejected"
-
-
 # class CorrectionStatus(models.TextChoices):
 #     SUBMITTED = "SUBMITTED", "Submitted"
 #     APPROVED = "APPROVED", "Approved"
@@ -37,11 +22,11 @@ class CountLoadBatch(TimeStampedModel):
     note = models.CharField(max_length=500, blank=True)
     status = models.CharField(max_length=16)
     row_count = models.PositiveIntegerField(default=0)
-    accepted_count = models.PositiveIntegerField(default=0)
-    pending_count = models.PositiveIntegerField(default=0)
-    rejected_count = models.PositiveIntegerField(default=0)
-    error_details = models.JSONField(default=list, blank=True)
-    row_version = models.PositiveBigIntegerField(default=1)
+    ready_count = models.PositiveIntegerField(default=0)
+    error_count = models.PositiveIntegerField(default=0)
+    part_count = models.PositiveIntegerField(default=0)
+    ex_part_count = models.PositiveIntegerField(default=0)
+    imported_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         indexes = [
@@ -52,12 +37,27 @@ class CountLoadBatch(TimeStampedModel):
         ]
 
 
+class TempCountLoadDetail(TimeStampedModel):
+    batch = models.ForeignKey(CountLoadBatch, null=True, blank=True, on_delete=models.CASCADE)
+    part = models.ForeignKey(PartMaster, on_delete=models.PROTECT)
+    raw_part_number = models.CharField(max_length=80)
+    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT)
+    physical_location = models.ForeignKey(PhysicalLocation, null=True, blank=True, on_delete=models.PROTECT)
+    sub_location = models.ForeignKey(SubLocation, null=True, blank=True, on_delete=models.PROTECT)
+    tag_number = models.CharField(max_length=80, blank=True)
+    quantity = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
+    counter_name = models.CharField(max_length=160, blank=True)
+    validation_errors = models.JSONField(default=list, blank=True)
+    is_valid = models.BooleanField(default=False)
+
+
 class CountRecord(models.Model):
     # idempotency_key = models.CharField(max_length=128, unique=True)  # ?
     # request_fingerprint = models.CharField(max_length=64)  # ?
     part = models.ForeignKey(PartMaster, on_delete=models.PROTECT, related_name="count_records")
     cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT, related_name="count_records")
-    batch = models.ForeignKey(CountLoadBatch, null=True, blank=True, on_delete=models.PROTECT)
+    batch = models.ForeignKey(CountLoadBatch, null=True, blank=True, on_delete=models.SET_NULL)
     source = models.CharField(max_length=16)
     source_record_key = models.CharField(max_length=160, blank=True)
     sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, related_name="count_records")
