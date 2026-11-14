@@ -159,6 +159,8 @@ def location_batch_validate(batch):
 
 
 def sub_location_excel_bytes(plant):
+    from site_setting.models import PhysicalLocation
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Sub Locations"
