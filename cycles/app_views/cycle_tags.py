@@ -1,6 +1,7 @@
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from core.excel_file_handler.cycle_tag_range import tag_batch_upload, tag_batch_validate, tag_range_excel_bytes
+from count.models import CycleTagDetail
 from cycles.app_functions.cycle_tag import create_tag_range_detail
 from cycles.models import (
     CyclePhysicalLocation,
@@ -190,7 +191,10 @@ def tag_range_remove(request, range_id):
     if not existing_range.exists():
         messages.error(request, "Tag range does NOT exist.")
         return redirect("cycles:tag_setup")
-
+    used_tag = CycleTagDetail.objects.filter(tag_range__id=range_id, is_counted=True)
+    if used_tag.exists():
+        messages.error(request, "Tag range cannot be removed as it has counted tags.")
+        return redirect("cycles:tag_setup")
     existing_range.delete()
     messages.success(request, "Tag range has been successfully removed.")
     return redirect("cycles:tag_setup")

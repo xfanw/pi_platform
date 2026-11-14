@@ -20,7 +20,7 @@ class CycleTagRange(TimeStampedModel):
 
     @property
     def used_count(self):
-        return 0
+        return self.tag_details.filter(is_counted=True).count()
 
 
 class TempCycleTagMain(TimeStampedModel):

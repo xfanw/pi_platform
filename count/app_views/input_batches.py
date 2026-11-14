@@ -4,7 +4,7 @@ from django.utils import timezone
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from core.excel_file_handler.count_batch import count_batch_upload, count_batch_validate, count_excel_bytes
-from count.models import CountIntakeException, CountRecord, TempCountLoadDetail, CountLoadBatch
+from count.models import CountIntakeException, CountRecord, CycleTagDetail, TempCountLoadDetail, CountLoadBatch
 
 PERMISSION = "Count.Count Result Upload"
 
@@ -176,7 +176,8 @@ def count_batch_confirm(request, batch_id):
     if not can_act:
         messages.error(request, mark_safe(f"You do NOT have permission to create part lists. {msg}"))
         return redirect("count:count_upload")
-
+    new_records = []
+    new_ex_records = []
     try:
         with transaction.atomic():
             batch_ref = (
@@ -191,8 +192,6 @@ def count_batch_confirm(request, batch_id):
 
             count_set = list(TempCountLoadDetail.objects.filter(batch=batch_ref, is_valid=True).order_by("id"))
             curr_time = timezone.now()
-            new_records = []
-            new_ex_records = []
             for count_detail in count_set:
                 if count_detail.part:
                     new_records.append(
@@ -234,8 +233,8 @@ def count_batch_confirm(request, batch_id):
                             updated_by=curr_user,
                         )
                     )
-            CountRecord.objects.bulk_create(new_records)
-            CountIntakeException.objects.bulk_create(new_ex_records)
+            new_count_record_set = CountRecord.objects.bulk_create(new_records)
+            new_count_ex_record_set = CountIntakeException.objects.bulk_create(new_ex_records)
 
             batch_ref.status = "Imported"
             batch_ref.imported_count = len(new_records) + len(new_ex_records)
@@ -245,4 +244,14 @@ def count_batch_confirm(request, batch_id):
         messages.error(request, f"Error importing count records. {clean_errors(e)}")
         return redirect("count:count_batch", batch_id=batch_id)
 
+    for record in new_count_record_set:
+        if record.tag_number:
+            CycleTagDetail.objects.filter(tag_number=record.tag_number).update(
+                count_record=record, exception_record=None, is_counted=True, updated_by=curr_user
+            )
+    for ex_record in new_count_ex_record_set:
+        if ex_record.tag_number:
+            CycleTagDetail.objects.filter(tag_number=ex_record.tag_number).update(
+                count_record=None, exception_record=ex_record, is_counted=True, updated_by=curr_user
+            )
     return redirect("count:count_batch", batch_id=batch_ref.id)

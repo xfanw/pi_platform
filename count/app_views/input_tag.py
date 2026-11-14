@@ -1,7 +1,6 @@
 from access_control.models import CounterRoster
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
-from count.app_functions.input import add_tag_info
 from count.models import CountIntakeException, CountRecord, CycleTagDetail
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PartMaster
@@ -146,7 +145,9 @@ def count_tag_create(request):
             entered_at=curr_time,
             accepted_at=curr_time,
         )
-        add_tag_info(tag_ref, count_record, curr_user)
+        CycleTagDetail.objects.filter(tag_number=tag_number).update(
+            count_record=count_record, exception_record=None, is_counted=True, updated_by=curr_user
+        )
 
         messages.success(request, "Count record created successfully.")
     else:
@@ -165,7 +166,9 @@ def count_tag_create(request):
             created_by=curr_user,
             updated_by=curr_user,
         )
-        add_tag_info(tag_ref, None, curr_user, ex_part_ref=ex_part_ref)
+        CycleTagDetail.objects.filter(tag_number=tag_number).update(
+            count_record=None, exception_record=ex_part_ref, is_counted=True, updated_by=curr_user
+        )
         messages.error(request, f"Unknown P/N {part_number} held in Pending Station for review.")
     return redirect(f"/count/count_tag?tag_number={int(tag_number)+1}")
 
@@ -228,7 +231,9 @@ def count_tag_update(request):
                 counter_name=curr_user.first_name,
                 entered_at=curr_time,
             )
-            add_tag_info(tag_ref, count_record, curr_user)
+            CycleTagDetail.objects.filter(tag_number=tag_ref.tag_number).update(
+                count_record=count_record, exception_record=None, is_counted=True, updated_by=curr_user
+            )
         messages.success(request, f"Tag Number {tag_number} updated successfully.")
     else:
         if count_record:
@@ -250,7 +255,9 @@ def count_tag_update(request):
                 created_by=curr_user,
                 updated_by=curr_user,
             )
-            add_tag_info(tag_ref, None, curr_user, ex_part_ref=ex_part_ref)
+            CycleTagDetail.objects.filter(tag_number=ex_part_ref.tag_number).update(
+                count_record=None, exception_record=ex_part_ref, is_counted=True, updated_by=curr_user
+            )
         if count_exception:
             count_exception.raw_part_number = part_number
             count_exception.quantity = quantity

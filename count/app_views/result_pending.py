@@ -1,7 +1,6 @@
 from access_control.app_functions import is_global_manager, is_plant_manager, my_sap_loc
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
-from count.app_functions.input import add_tag_info
 from count.models import CountIntakeException, CountRecord, CycleTagDetail
 from cycles.app_models.inventory_models import PartMaster
 from site_setting.system_setting.sys_settings import SysSet
@@ -149,7 +148,9 @@ def pending_part_create(request):
         )
         tag_ref = CycleTagDetail.objects.filter(tag_number=ex_part.tag_number, tag_range__cycle=active_cycle).first()
         if tag_ref:
-            add_tag_info(tag_ref, count_ref, curr_user, ex_part_ref=None)
+            CycleTagDetail.objects.filter(tag_number=tag_ref.tag_number).update(
+                count_record=count_ref, exception_record=None, is_counted=True, updated_by=curr_user
+            )
         messages.success(request, f"New part {raw_part_no} created successfully.")
     except Exception as e:
         messages.error(request, f"Failed to create new part: {str(e)}")
@@ -210,7 +211,9 @@ def pending_part_map(request):
         )
         tag_ref = CycleTagDetail.objects.filter(tag_number=ex_part.tag_number, tag_range__cycle=active_cycle).first()
         if tag_ref:
-            add_tag_info(tag_ref, count_ref, curr_user, ex_part_ref=None)
+            CycleTagDetail.objects.filter(tag_number=tag_ref.tag_number).update(
+                count_record=count_ref, exception_record=None, is_counted=True, updated_by=curr_user
+            )
         messages.success(request, f"Part {existing_part_number} mapped to existing part successfully.")
     except Exception as e:
         messages.error(request, f"Failed to map part: {str(e)}")
