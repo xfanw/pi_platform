@@ -16,7 +16,7 @@ $("#count-tag-number").keydown(function (e) {
 
 function edit_tag_part(tag_num) {
     Swal.fire({
-        title: `New Plant`,
+        title: `Tag Number: ${tag_num}`,
         html: `<form id='new_plant_form' action='/site_setting/create_plant'>
                   <div class='row col-md-12'>
                     <div class='input-group'>
