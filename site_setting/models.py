@@ -21,7 +21,7 @@ class Plant(ActiveModel):
 
 
 class SAPLocation(ActiveModel):
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT, related_name="sap_locations")
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="sap_locations")
     department = models.CharField(max_length=63, blank=True)
     code = models.CharField(max_length=16)
     address = models.CharField(max_length=255, blank=True)
@@ -70,8 +70,8 @@ class SAPLocation(ActiveModel):
 
 
 class PhysicalLocation(ActiveModel):
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT, related_name="physical_locations")
-    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, related_name="physical_locations")
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="physical_locations")
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, related_name="physical_locations")
     name = models.CharField(max_length=160)
 
     class Meta:
@@ -91,8 +91,8 @@ class PhysicalLocation(ActiveModel):
 
 
 class SubLocation(ActiveModel):
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT, related_name="sub_locations")
-    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.PROTECT, related_name="sub_locations")
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="sub_locations")
+    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.CASCADE, related_name="sub_locations")
     name = models.CharField(max_length=160)
 
     class Meta:
@@ -106,7 +106,7 @@ class SubLocation(ActiveModel):
 class BusinessOption(ActiveModel):
     """Plant-owned workflow vocabulary whose recorded history stays immutable."""
 
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT, related_name="business_options")
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="business_options")
     category = models.CharField(max_length=40)  # BUSINESS_OPTION_CATEGORY
     value = models.CharField(max_length=120)
     sort_order = models.PositiveIntegerField(default=0)
@@ -136,7 +136,7 @@ class SystemSetting(models.Model):
 class TempLocationMain(TimeStampedModel):
     """Immutable upload preview followed by one atomic additive import."""
 
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT)
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
     source_filename = models.CharField(max_length=255)
     status = models.CharField(max_length=16)
     row_count = models.PositiveIntegerField(default=0)
@@ -145,13 +145,13 @@ class TempLocationMain(TimeStampedModel):
     imported_count = models.PositiveIntegerField(default=0)
     skipped_row = models.PositiveIntegerField(default=0)
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT)
+    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
 
 
 class TempLocationDetail(models.Model):
     batch = models.ForeignKey(TempLocationMain, on_delete=models.CASCADE)
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT)
-    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, null=True, blank=True)
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=160)
     validation_errors = models.JSONField(default=list, blank=True)
     is_valid = models.BooleanField(default=False)
@@ -160,7 +160,7 @@ class TempLocationDetail(models.Model):
 class TempSubLocationMain(TimeStampedModel):
     """Immutable upload preview followed by one atomic additive import."""
 
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT)
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
     source_filename = models.CharField(max_length=255)
     status = models.CharField(max_length=16)
     row_count = models.PositiveIntegerField(default=0)
@@ -169,13 +169,13 @@ class TempSubLocationMain(TimeStampedModel):
     imported_count = models.PositiveIntegerField(default=0)
     skipped_row = models.PositiveIntegerField(default=0)
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT)
+    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
 
 
 class TempSubLocationDetail(models.Model):
     batch = models.ForeignKey(TempSubLocationMain, on_delete=models.CASCADE)
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT)
-    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.PROTECT, null=True, blank=True)
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
+    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=160)
     validation_errors = models.JSONField(default=list, blank=True)
     is_valid = models.BooleanField(default=False)

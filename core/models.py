@@ -8,7 +8,7 @@ class TimeStampedModel(models.Model):
         User,
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="%(app_label)s_%(class)s_created",
     )
     updated_at = models.DateTimeField(auto_now=True)
@@ -16,7 +16,7 @@ class TimeStampedModel(models.Model):
         User,
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="%(app_label)s_%(class)s_updated",
     )
 

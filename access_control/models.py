@@ -22,7 +22,7 @@ class RoleApp(models.Model):
 
 class RoleAction(models.Model):
     role = models.CharField(max_length=50, default="")  # BUSINESS_ROLE
-    access_page = models.ForeignKey(RoleApp, on_delete=models.PROTECT, to_field="app_name")
+    access_page = models.ForeignKey(RoleApp, on_delete=models.CASCADE, to_field="app_name")
     can_edit = models.BooleanField(default=False)
 
 
@@ -36,7 +36,7 @@ class RoleAssignment(TimeStampedModel):
 
     user = models.ForeignKey(
         User,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="role_assignments",
     )
     role = models.CharField(max_length=40)  # BUSINESS_ROLE
@@ -44,7 +44,7 @@ class RoleAssignment(TimeStampedModel):
         Plant,
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="role_assignments",
     )
     department = models.CharField(max_length=63, blank=True)  # DEPARTMENTS
@@ -52,7 +52,7 @@ class RoleAssignment(TimeStampedModel):
         SAPLocation,
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="role_assignments",
     )
     count_methods = models.TextField(
@@ -123,7 +123,7 @@ class UserOnboardingBatch(TimeStampedModel):
 
     plant = models.ForeignKey(
         Plant,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="user_onboarding_batches",
     )
     source_filename = models.CharField(max_length=255)
@@ -138,7 +138,7 @@ class UserOnboardingBatch(TimeStampedModel):
         User,
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="confirmed_user_onboarding_batches",
     )
 
@@ -155,7 +155,7 @@ class CounterOnboardingRow(models.Model):
     department = models.CharField(max_length=31)
     sap_location = models.ForeignKey(
         SAPLocation,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="counter_onboard",
         null=True,
         blank=True,
@@ -167,9 +167,9 @@ class CounterOnboardingRow(models.Model):
 class CounterRoster(ActiveModel):
     """Plant roster identity used for count attribution; it is not a login role."""
 
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT, related_name="counter_roster")
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="counter_roster")
     department = models.CharField(max_length=63, blank=True)
-    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, related_name="counter_roster", null=True, blank=True)
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, related_name="counter_roster", null=True, blank=True)
     employee_id = models.CharField(max_length=80)
     display_name = models.CharField(max_length=160)
 
