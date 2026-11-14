@@ -105,6 +105,9 @@ def ex_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
 
             records.append((part, location, reason, curr_valid, line_errors))
 
+        if not records:
+            return "error", "File is empty."
+
         batch = TempExPartMain.objects.create(
             cycle=cycle,
             source_filename=curr_file.name[:255],
@@ -115,6 +118,7 @@ def ex_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
             created_by=actor,
             updated_by=actor,
         )
+
         TempExPartDetail.objects.bulk_create(
             [
                 TempExPartDetail(

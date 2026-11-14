@@ -109,7 +109,10 @@ def sap_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                     curr_valid = False
                     line_errors.append("Duplicated PN and SAP Location in this file")
                 seen.add(key)
+
             records.append((part, location, quantity, line_errors, curr_valid))
+        if not records:
+            return "error", "File is empty."
 
         batch = TempSAPPartMain.objects.create(
             cycle=cycle,

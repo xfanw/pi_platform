@@ -39,7 +39,7 @@ class CountLoadBatch(TimeStampedModel):
 
 class TempCountLoadDetail(TimeStampedModel):
     batch = models.ForeignKey(CountLoadBatch, null=True, blank=True, on_delete=models.CASCADE)
-    part = models.ForeignKey(PartMaster, on_delete=models.PROTECT)
+    part = models.ForeignKey(PartMaster, null=True, blank=True, on_delete=models.PROTECT)
     raw_part_number = models.CharField(max_length=80)
     cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
     sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT)

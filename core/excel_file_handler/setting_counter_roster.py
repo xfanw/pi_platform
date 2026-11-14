@@ -174,13 +174,17 @@ def counter_batch_upload(curr_file, sheet_name, *, plant, actor):
                     is_valid=curr_valid,
                 )
             )
+
     try:
+        if not user_list:
+            batch.delete()
+            return "error", "File is empty."
         CounterOnboardingRow.objects.bulk_create(user_list)
     except Exception as e:
-        workbook.close()
         return "error", f"Error batch onboarding, f{clean_errors(e)}"
+    finally:
+        workbook.close()
 
-    workbook.close()
     return "success", batch
 
 

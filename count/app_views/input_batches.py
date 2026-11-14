@@ -1,9 +1,10 @@
+from django.db import transaction
+from django.utils import timezone
+
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from core.excel_file_handler.count_batch import count_batch_upload, count_batch_validate, count_excel_bytes
 from count.models import CountRecord, TempCountLoadDetail, CountLoadBatch
-from cycles.app_models.inventory_models import PartMaster, PartMaster, TempPartDetail, TempPartDetail, TempPartMain
-from cycles.app_models.inventory_models import TempPartMain
 
 PERMISSION = "Count.Count Result Upload"
 
@@ -98,15 +99,20 @@ def count_file_upload(request):
     can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
     if not can_act:
         messages.error(request, mark_safe(f"You do NOT have permission to upload file. {msg}"))
-        return redirect("cycles:count_upload")
+        return redirect("count:count_upload")
 
     try:
         status, msg = count_batch_upload(
-            request.FILES.get("file"), "Count Upload", note=request.POST.get("note", ""), cycle=active_cycle_ref, actor=request.user
+            request.FILES.get("file"),
+            "Count Upload",
+            plant=plant,
+            note=request.POST.get("note", ""),
+            cycle=active_cycle_ref,
+            actor=request.user,
         )
         if status == "error":
             messages.error(request, msg)
-            return redirect("cycles:count_upload")
+            return redirect("count:count_upload")
         # TODO: Keep Log
 
         batch = msg
@@ -123,10 +129,10 @@ def count_file_upload(request):
                 request,
                 "Preview is ready. Review every row before confirming the import.",
             )
-        return redirect("cycles:count_batch", batch_id=batch.id)
+        return redirect("count:count_batch", batch_id=batch.id)
     except Exception as e:
         messages.error(request, f"File Validation Error, {clean_errors(e)}")
-        return redirect("cycles:count_upload")
+        return redirect("count:count_upload")
 
 
 @login_required
@@ -141,14 +147,15 @@ def count_batch(request, batch_id):
     can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
     if not can_act:
         messages.error(request, mark_safe(f"You do NOT have permission to view counter roster. {msg}"))
-        return redirect("cycles:count_upload")
+        return redirect("count:count_upload")
 
-    batch_ref = CountLoadBatch.objects.filter(id=batch_id).first()
+    batch_ref = CountLoadBatch.objects.filter(id=batch_id, cycle__plant=plant).first()
     if not batch_ref:
-        messages.error(request, "Batch doesn NOT exist. ")
+        messages.error(request, "Batch does not exist.")
+        return redirect("count:count_upload")
     context["batch"] = batch_ref
     context["rows"] = TempCountLoadDetail.objects.filter(batch=batch_ref).order_by("id")
-    return render(request, "inventory/count_batch.html", context)
+    return render(request, "count/batch_detail.html", context)
 
 
 @login_required
@@ -168,44 +175,53 @@ def count_batch_confirm(request, batch_id):
     can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
     if not can_act:
         messages.error(request, mark_safe(f"You do NOT have permission to create part lists. {msg}"))
-        return redirect("cycles:count_upload")
+        return redirect("count:count_upload")
 
-    curr_time = datetime.now().astimezone()
-    batch_ref = TempPartMain.objects.filter(id=batch_id).first()
-    if not batch_ref:
-        messages.error(request, "Batch doesn NOT exist. ")
-    context["batch"] = batch_ref
-    count_set = TempPartDetail.objects.filter(batch=batch_ref).order_by("id")
-    # TODO: Check if count started
-    PartMaster.objects.filter(cycle=active_cycle_ref).delete()
-
-    new_parts = []
     try:
-        for count_detail in count_set:
-
-            new_parts.append(
-                PartMaster(
-                    cycle=count_detail.cycle,
-                    count_number=count_detail.count_number,
-                    description=count_detail.description,
-                    business_unit=count_detail.business_unit,
-                    price=count_detail.price,
-                    created_by=curr_user,
-                    updated_by=curr_user,
-                )
+        with transaction.atomic():
+            batch_ref = (
+                CountLoadBatch.objects.select_for_update()
+                .filter(id=batch_id, cycle=active_cycle_ref, cycle__plant=plant)
+                .first()
             )
+            if not batch_ref:
+                messages.error(request, "Batch does not exist in the active cycle.")
+                return redirect("count:count_upload")
+            if batch_ref.status != "Preview" or batch_ref.error_count:
+                messages.error(request, "Only a valid preview batch can be confirmed.")
+                return redirect("count:count_batch", batch_id=batch_ref.id)
 
-        PartMaster.objects.bulk_create(new_parts)
+            count_set = list(TempCountLoadDetail.objects.filter(batch=batch_ref, is_valid=True).order_by("id"))
+            curr_time = timezone.now()
+            new_records = [
+                CountRecord(
+                    part=count_detail.part,
+                    cycle=count_detail.cycle,
+                    batch=batch_ref,
+                    source=batch_ref.source,
+                    source_record_key=str(count_detail.id),
+                    sap_location=count_detail.sap_location,
+                    physical_location=count_detail.physical_location,
+                    sub_location=count_detail.sub_location,
+                    tag_number=count_detail.tag_number,
+                    quantity=count_detail.quantity,
+                    counter_name=count_detail.counter_name,
+                    entered_by=curr_user,
+                    entered_at=curr_time,
+                    accepted_at=curr_time,
+                    accepted_by=curr_user,
+                    editable=True,
+                )
+                for count_detail in count_set
+            ]
+            CountRecord.objects.bulk_create(new_records)
+
+            batch_ref.status = "Imported"
+            batch_ref.imported_count = len(new_records)
+            batch_ref.updated_by = curr_user
+            batch_ref.save(update_fields=["status", "imported_count", "updated_by", "updated_at"])
     except Exception as e:
-        messages.error(request, f"Error creating Cycle part lists. {str(e).replace('\n', ' ').replace('\r', '').strip()}")
-        return redirect("cycles:count_batch", batch_id=batch_ref.id)
+        messages.error(request, f"Error importing count records. {clean_errors(e)}")
+        return redirect("count:count_batch", batch_id=batch_id)
 
-    batch_ref.status = "Imported"
-    batch_ref.imported_count = count_set.count()
-    batch_ref.skipped_row = 0
-    batch_ref.confirmed_at = curr_time
-    batch_ref.confirmed_by = curr_user
-    batch_ref.updated_by = curr_user
-    batch_ref.updated_at = curr_time
-    batch_ref.save()
-    return redirect("cycles:count_batch", batch_id=batch_ref.id)
+    return redirect("count:count_batch", batch_id=batch_ref.id)

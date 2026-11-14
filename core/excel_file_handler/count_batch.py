@@ -1,4 +1,5 @@
 from io import BytesIO
+from decimal import Decimal, InvalidOperation
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -38,9 +39,10 @@ def count_excel_bytes(plant):
 
 
 @transaction.atomic
-def count_batch_upload(curr_file, sheet_name, note, cycle, actor):
-    from cycles.models import CountLoadBatch, TempCountLoadDetail, PartMaster
-    from site_setting.models import SAPLocation, PhysicalLocation, SubLocation
+def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
+    from count.models import CountLoadBatch, TempCountLoadDetail
+    from cycles.models import CyclePhysicalLocation, CycleSAPLocation, CycleSubLocation, CycleTagRange, PartMaster
+    from site_setting.models import SAPLocation
 
     if not curr_file:
         return "error", "Choose a completed .xlsx file."
@@ -53,84 +55,176 @@ def count_batch_upload(curr_file, sheet_name, note, cycle, actor):
     except Exception as e:
         return "error", f"The uploaded workbook could not be read. {clean_errors(e)}"
 
-    part_list = []
-
-    if not sheet_name in workbook.sheetnames:
-        workbook.close()
-        return "error", f"Sheet name {sheet_name} does NOT exist, please download the latest template. "
-
-    sheet = workbook[sheet_name]
     try:
+        if sheet_name not in workbook.sheetnames:
+            return "error", f"Sheet name {sheet_name} does NOT exist, please download the latest template. "
+
+        rows = workbook[sheet_name].iter_rows(values_only=True)
+        headers = tuple(text_val(value) for value in next(rows, ()))
+        if headers != COUNT_BATCH_HEADERS:
+            return "error", "Headers do NOT match, please download the latest template. "
+
+        parts = {part.part_number: part for part in PartMaster.objects.filter(cycle=cycle)}
+        sap_locations = {location.code: location for location in SAPLocation.objects.filter(plant=plant, is_active=True)}
+        cycle_sap_locations = {
+            location.sap_location_id: location
+            for location in CycleSAPLocation.objects.filter(plant=plant, cycle=cycle, is_active=True)
+        }
+        physical_locations = {
+            (location.physical_location.sap_location_id, location.physical_location.name): location.physical_location
+            for location in CyclePhysicalLocation.objects.filter(plant=plant, cycle=cycle, is_active=True).select_related(
+                "physical_location"
+            )
+        }
+        sub_locations = {
+            (location.sub_location.physical_location_id, location.sub_location.name): location.sub_location
+            for location in CycleSubLocation.objects.filter(plant=plant, cycle=cycle, is_active=True).select_related("sub_location")
+        }
+        tag_ranges = {}
+        for sap_location_id, physical_location_id, sub_location_id, start_number, end_number in CycleTagRange.objects.filter(
+            plant=plant, cycle=cycle
+        ).values_list("sap_location_id", "physical_location_id", "sub_location_id", "start_number", "end_number"):
+            key = (sap_location_id, physical_location_id, sub_location_id)
+            tag_ranges.setdefault(key, []).append((start_number, end_number))
+
+        details = []
+        for line_number, row in enumerate(rows, start=2):
+            row = tuple(row[: len(COUNT_BATCH_HEADERS)]) + (None,) * max(0, len(COUNT_BATCH_HEADERS) - len(row))
+            if not any(value not in (None, "") for value in row):
+                continue
+
+            part_number, sap_code, location_name, sub_location_name, tag_number, quantity_value, counter_name = (
+                text_val(value) for value in row
+            )
+            part_number = part_number.strip()
+            sap_code = sap_code.strip()
+            location_name = location_name.strip()
+            sub_location_name = sub_location_name.strip()
+            tag_number = tag_number.strip()
+            counter_name = counter_name.strip() or actor.first_name
+
+            part = parts.get(part_number)
+
+            sap_location = sap_locations.get(sap_code)
+            if not sap_location:
+                return "error", f"Line {line_number}: SAP Location {sap_code or '(blank)'} is not in this plant."
+
+            errors = []
+            is_valid = True
+            if not part_number or not sap_code or not location_name or not text_val(quantity_value):
+                is_valid = False
+                errors.append("PN, SAP Location, Location and Qty are required. ")
+            if not part:
+                is_valid = False
+                errors.append(f"PN {part_number or '(blank)'} is not in the current PN List. ")
+
+            if sap_location.id not in cycle_sap_locations:
+                is_valid = False
+                errors.append(f"SAP Location {sap_code} does not exist in this cycle. ")
+
+            physical_location = physical_locations.get((sap_location.id, location_name))
+            if not physical_location:
+                is_valid = False
+                errors.append(f"Location {location_name} does not exist in this cycle. ")
+
+            sub_location = None
+            if sub_location_name:
+                if physical_location:
+                    sub_location = sub_locations.get((physical_location.id, sub_location_name))
+                if not sub_location:
+                    is_valid = False
+                    errors.append(f"Sub Location {sub_location_name} does not exist in this cycle. ")
+
+            if tag_number:
+                try:
+                    tag_number_value = int(tag_number)
+                except ValueError:
+                    is_valid = False
+                    errors.append("Tag Number must be a valid whole number. ")
+                else:
+                    location_key = (
+                        sap_location.id,
+                        physical_location.id if physical_location else None,
+                        sub_location.id if sub_location else None,
+                    )
+                    ranges = tag_ranges.get(location_key, ())
+                    if not any(start <= tag_number_value <= end for start, end in ranges):
+                        is_valid = False
+                        errors.append(
+                            f"Tag Number {tag_number} is not defined in a tag range for the selected SAP Location, "
+                            "Location and Sub Location. "
+                        )
+
+            quantity = Decimal(0)
+            if text_val(quantity_value):
+                try:
+                    quantity = Decimal(text_val(quantity_value))
+                    if not quantity.is_finite() or quantity < 0:
+                        quantity = Decimal(0)
+                        is_valid = False
+                        errors.append("Qty must be a number of 0 or more. ")
+                except InvalidOperation:
+                    is_valid = False
+                    errors.append("Qty must be a number of 0 or more. ")
+            details.append(
+                TempCountLoadDetail(
+                    cycle=cycle,
+                    part=part,
+                    raw_part_number="" if part else part_number,
+                    sap_location=sap_location,
+                    physical_location=physical_location,
+                    sub_location=sub_location,
+                    tag_number=tag_number,
+                    quantity=quantity,
+                    counter_name=counter_name,
+                    validation_errors=errors,
+                    is_valid=is_valid,
+                    created_by=actor,
+                    updated_by=actor,
+                )
+            )
+
+        if not details:
+            return "error", "File is empty."
+
         batch = CountLoadBatch.objects.create(
             cycle=cycle,
+            source="Count Upload",
             source_filename=curr_file.name[:255],
+            note=note,
+            status="Preview",
             created_by=actor,
             updated_by=actor,
         )
-        rows = sheet.iter_rows(values_only=True)
-        headers = tuple(text_val(value) for value in next(rows))
-        if not headers == COUNT_BATCH_HEADERS:
-            workbook.close()
-            return "error", f"Headers do NOT match, please download the latest template. "
-
-        for row in rows:
-            if row[0] or row[1] or row[2] or row[3]:
-                curr_error = []
-                curr_valid = True
-                curr_part_number = text_val(row[0]).strip() if row[0] else ""
-                curr_desc = text_val(row[1]).strip() if row[1] else ""
-                curr_price = row[2] if row[2] else 0
-                curr_bu = text_val(row[3]).strip() if row[3] else ""
-                if not curr_part_number or not curr_price or not curr_bu:
-                    curr_valid = False
-                    curr_error.append("PN, MAP$, BU are required. This line has empty fields. ")
-
-                try:
-                    curr_price = float(curr_price)
-                except ValueError:
-                    curr_price = 0
-                    curr_valid = False
-                    curr_error.append("MAP$ must be a valid number. ")
-
-                part_list.append(
-                    TempCountLoadDetail(
-                        cycle=cycle,
-                        part_number=curr_part_number,
-                        description=curr_desc,
-                        business_unit=curr_bu,
-                        price=curr_price,
-                        validation_errors=curr_error,
-                        is_valid=curr_valid,
-                        batch=batch,
-                        created_by=actor,
-                        updated_by=actor,
-                    )
-                )
-
-        TempCountLoadDetail.objects.bulk_create(part_list)
+        for detail in details:
+            detail.batch = batch
+        TempCountLoadDetail.objects.bulk_create(details)
     except Exception as e:
-        workbook.close()
         return "error", f"Error batch onboarding, {clean_errors(e)}"
+    finally:
+        workbook.close()
 
-    workbook.close()
     return "success", batch
 
 
 def count_batch_validate(batch):
-    from cycles.models import TempCountLoadDetail
+    from collections import Counter
 
-    part_set = TempCountLoadDetail.objects.filter(batch=batch)
-    for part in part_set:
-        new_error = False
+    from count.models import TempCountLoadDetail
 
-        duplicated_parts = part_set.exclude(pk=part.pk).filter(part_number=part.part_number)
+    details = list(TempCountLoadDetail.objects.filter(batch=batch))
+    tag_counts = Counter(detail.tag_number for detail in details if detail.tag_number)
+    changed = []
+    duplicate_tag_error = "This tag number is duplicated in this file batch. "
 
-        if duplicated_parts.exists():
-            new_error = True
-            part.is_valid = False
-            part.validation_errors.append("This part number is duplicated in this file batch. ")
-        if new_error:
-            part.save()
+    for detail in details:
+        if detail.tag_number and tag_counts[detail.tag_number] > 1 and duplicate_tag_error not in detail.validation_errors:
+            detail.is_valid = False
+            detail.validation_errors.append(duplicate_tag_error)
+            changed.append(detail)
+
+    if changed:
+        TempCountLoadDetail.objects.bulk_update(changed, ["is_valid", "validation_errors"])
 
     status = TempCountLoadDetail.objects.filter(batch=batch).aggregate(
         row_count=Count("id"),

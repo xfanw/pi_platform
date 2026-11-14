@@ -143,6 +143,9 @@ def tag_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                         updated_by=actor,
                     )
                 )
+        if not tag_list:
+            batch.delete()
+            return "error", "File is empty."
 
         TempCycleTagDetail.objects.bulk_create(tag_list)
     except Exception as e:

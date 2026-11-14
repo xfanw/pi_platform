@@ -105,13 +105,16 @@ def part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                         updated_by=actor,
                     )
                 )
+        if not part_list:
+            batch.delete()
+            return "error", "File is empty."
 
         TempPartDetail.objects.bulk_create(part_list)
     except Exception as e:
-        workbook.close()
         return "error", f"Error batch onboarding, {clean_errors(e)}"
+    finally:
+        workbook.close()
 
-    workbook.close()
     return "success", batch
 
 
