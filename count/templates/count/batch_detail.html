@@ -41,15 +41,18 @@
 
 <section class="card bulk-preview-card">
   <div class="scroll"><table class="bulk-preview-table">
-    <thead><tr><th>Excel Row</th><th>Employee ID</th><th>Employee Name</th><th>Ownership</th><th>SAP Locations</th><th>Validation</th></tr></thead>
+    <thead><tr><th>Row</th><th>PN</th><th>SAP Location</th><th>Location</th><th>Sub Location</th><th>Tag Number</th><th>Qty</th><th>Counter</th><th>Validation</th></tr></thead>
     <tbody>
     {% for row in rows %}
       <tr class="{% if not row.is_valid %}bulk-error-row{% endif %}">
-        <td>{{ row.row_number }}</td>
-        <td><b class="mono">{{ row.employee_id|default:"-- --" }}</b></td>
-        <td>{{ row.display_name|default:"-- --" }}</td>
-        <td>{{ row.department|default:"-- --" }}</td>
-        <td><span class="role-tag">{{ row.sap_location |default:"All" }}</span></td>
+        <td>{{ forloop.counter }}</td>
+        <td><b class="mono">{{ row.part.part_number|default:row.raw_part_number|default:"--" }}</b></td>
+        <td><span class="role-tag">{{ row.sap_location.code|default:"--" }}</span></td>
+        <td>{{ row.physical_location.name|default:"--" }}</td>
+        <td>{{ row.sub_location.name|default:"--" }}</td>
+        <td>{{ row.tag_number|default:"--" }}</td>
+        <td>{{ row.quantity|default:"--" }}</td>
+        <td>{{ row.counter_name|default:"--" }}</td>
         <td>{% if row.is_valid %}<span class="positive"><b>Ready</b></span>{% else %}<span class="negative"><b>Fix required</b></span>{% for error in row.validation_errors %}<small>{{ error }}</small>{% endfor %}{% endif %}</td>
       </tr>
     {% endfor %}

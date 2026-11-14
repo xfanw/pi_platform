@@ -40,7 +40,7 @@ def count_excel_bytes(plant):
 
 @transaction.atomic
 def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
-    from count.models import CountLoadBatch, TempCountLoadDetail
+    from count.models import CountLoadBatch, CycleTagDetail, TempCountLoadDetail
     from cycles.models import CyclePhysicalLocation, CycleSAPLocation, CycleSubLocation, CycleTagRange, PartMaster
     from site_setting.models import SAPLocation
 
@@ -86,6 +86,7 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
         ).values_list("sap_location_id", "physical_location_id", "sub_location_id", "start_number", "end_number"):
             key = (sap_location_id, physical_location_id, sub_location_id)
             tag_ranges.setdefault(key, []).append((start_number, end_number))
+        counted_tags = set(CycleTagDetail.objects.filter(tag_range__cycle=cycle, is_counted=True).values_list("tag_number", flat=True))
 
         details = []
         for line_number, row in enumerate(rows, start=2):
@@ -125,7 +126,7 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
             physical_location = physical_locations.get((sap_location.id, location_name))
             if not physical_location:
                 is_valid = False
-                errors.append(f"Location {location_name} does not exist in this cycle. ")
+                errors.append(f"Location {location_name} does not exist in {sap_code}. ")
 
             sub_location = None
             if sub_location_name:
@@ -133,7 +134,7 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
                     sub_location = sub_locations.get((physical_location.id, sub_location_name))
                 if not sub_location:
                     is_valid = False
-                    errors.append(f"Sub Location {sub_location_name} does not exist in this cycle. ")
+                    errors.append(f"Sub Location {sub_location_name} does not exist in {sap_code} > {location_name}. ")
 
             if tag_number:
                 try:
@@ -154,6 +155,9 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
                             f"Tag Number {tag_number} is not defined in a tag range for the selected SAP Location, "
                             "Location and Sub Location. "
                         )
+                    elif tag_number_value in counted_tags:
+                        is_valid = False
+                        errors.append(f"Tag Number {tag_number} has already been counted in this cycle. ")
 
             quantity = Decimal(0)
             if text_val(quantity_value):

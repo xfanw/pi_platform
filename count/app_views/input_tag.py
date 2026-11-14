@@ -63,7 +63,7 @@ def count_tag(request):
 
     if not tag_number:
         context["blank_tag_set"] = tag_set.filter(is_counted=False).order_by("tag_number")[:20]
-        context["counted_tag_set"] = tag_set.filter(is_counted=True).order_by("count_record__entered_at")[:50]
+        context["counted_tag_set"] = tag_set.filter(is_counted=True).order_by("-updated_at")[:50]
         return render(request, "count/tag.html", context)
 
     curr_tag = CycleTagDetail.objects.filter(tag_range__cycle=active_cycle, tag_number=tag_number, is_counted=False).first()
@@ -82,7 +82,7 @@ def count_tag(request):
     tag_set = tag_set.filter(tag_range__sap_location__code=curr_tag.tag_range.sap_location.code)
     context["sap_location_filter"] = curr_tag.tag_range.sap_location.code
     context["blank_tag_set"] = tag_set.filter(is_counted=False).order_by("tag_number")[:20]
-    context["counted_tag_set"] = tag_set.filter(is_counted=True).order_by("count_record__entered_at")[:20]
+    context["counted_tag_set"] = tag_set.filter(is_counted=True).order_by("-updated_at")[:20]
     context["curr_counter_list"] = list(
         CounterRoster.objects.filter(plant=curr_tag.tag_range.plant, is_active=True)
         .filter(Q(sap_location=curr_tag.tag_range.sap_location) | Q(sap_location__isnull=True))
