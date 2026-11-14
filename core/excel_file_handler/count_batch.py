@@ -115,9 +115,6 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
             if not part_number or not sap_code or not location_name or not text_val(quantity_value):
                 is_valid = False
                 errors.append("PN, SAP Location, Location and Qty are required. ")
-            if not part:
-                is_valid = False
-                errors.append(f"PN {part_number or '(blank)'} is not in the current PN List. ")
 
             if sap_location.id not in cycle_sap_locations:
                 is_valid = False
@@ -234,11 +231,15 @@ def count_batch_validate(batch):
         row_count=Count("id"),
         ready_count=Count("id", filter=Q(is_valid=True)),
         error_count=Count("id", filter=Q(is_valid=False)),
+        part_count=Count("id", filter=Q(part__isnull=False)),
+        ex_part_count=Count("id", filter=Q(part__isnull=True)),
     )
 
     error_count = status.get("error_count", 0)
     batch.row_count = status.get("row_count", 0)
     batch.ready_count = status.get("ready_count", 0)
+    batch.part_count = status.get("part_count", 0)
+    batch.ex_part_count = status.get("ex_part_count", 0)
     batch.error_count = error_count
     batch.status = "Error" if error_count > 0 else "Preview"
     batch.save()

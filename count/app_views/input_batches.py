@@ -4,7 +4,7 @@ from django.utils import timezone
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from core.excel_file_handler.count_batch import count_batch_upload, count_batch_validate, count_excel_bytes
-from count.models import CountRecord, TempCountLoadDetail, CountLoadBatch
+from count.models import CountIntakeException, CountRecord, TempCountLoadDetail, CountLoadBatch
 
 PERMISSION = "Count.Count Result Upload"
 
@@ -180,9 +180,7 @@ def count_batch_confirm(request, batch_id):
     try:
         with transaction.atomic():
             batch_ref = (
-                CountLoadBatch.objects.select_for_update()
-                .filter(id=batch_id, cycle=active_cycle_ref, cycle__plant=plant)
-                .first()
+                CountLoadBatch.objects.select_for_update().filter(id=batch_id, cycle=active_cycle_ref, cycle__plant=plant).first()
             )
             if not batch_ref:
                 messages.error(request, "Batch does not exist in the active cycle.")
@@ -193,31 +191,54 @@ def count_batch_confirm(request, batch_id):
 
             count_set = list(TempCountLoadDetail.objects.filter(batch=batch_ref, is_valid=True).order_by("id"))
             curr_time = timezone.now()
-            new_records = [
-                CountRecord(
-                    part=count_detail.part,
-                    cycle=count_detail.cycle,
-                    batch=batch_ref,
-                    source=batch_ref.source,
-                    source_record_key=str(count_detail.id),
-                    sap_location=count_detail.sap_location,
-                    physical_location=count_detail.physical_location,
-                    sub_location=count_detail.sub_location,
-                    tag_number=count_detail.tag_number,
-                    quantity=count_detail.quantity,
-                    counter_name=count_detail.counter_name,
-                    entered_by=curr_user,
-                    entered_at=curr_time,
-                    accepted_at=curr_time,
-                    accepted_by=curr_user,
-                    editable=True,
-                )
-                for count_detail in count_set
-            ]
+            new_records = []
+            new_ex_records = []
+            for count_detail in count_set:
+                if count_detail.part:
+                    new_records.append(
+                        CountRecord(
+                            part=count_detail.part,
+                            cycle=count_detail.cycle,
+                            batch=batch_ref,
+                            source=batch_ref.source,
+                            source_record_key=str(count_detail.id),
+                            sap_location=count_detail.sap_location,
+                            physical_location=count_detail.physical_location,
+                            sub_location=count_detail.sub_location,
+                            tag_number=count_detail.tag_number,
+                            quantity=count_detail.quantity,
+                            counter_name=count_detail.counter_name,
+                            entered_by=curr_user,
+                            entered_at=curr_time,
+                            accepted_at=curr_time,
+                            accepted_by=curr_user,
+                            editable=False,
+                        )
+                    )
+                else:
+                    new_ex_records.append(
+                        CountIntakeException(
+                            batch=batch_ref,
+                            cycle=active_cycle_ref,
+                            raw_part_number=count_detail.raw_part_number,
+                            source=batch_ref.source,
+                            status="Pending",
+                            tag_number=count_detail.tag_number,
+                            quantity=count_detail.quantity,
+                            counter_name=count_detail.counter_name,
+                            sap_location=count_detail.sap_location,
+                            physical_location=count_detail.physical_location,
+                            sub_location=count_detail.sub_location,
+                            created_at=curr_time,
+                            created_by=curr_user,
+                            updated_by=curr_user,
+                        )
+                    )
             CountRecord.objects.bulk_create(new_records)
+            CountIntakeException.objects.bulk_create(new_ex_records)
 
             batch_ref.status = "Imported"
-            batch_ref.imported_count = len(new_records)
+            batch_ref.imported_count = len(new_records) + len(new_ex_records)
             batch_ref.updated_by = curr_user
             batch_ref.save(update_fields=["status", "imported_count", "updated_by", "updated_at"])
     except Exception as e:
