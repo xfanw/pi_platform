@@ -165,6 +165,99 @@ def count_tag_create(request):
             created_by=curr_user,
             updated_by=curr_user,
         )
-        add_tag_info(tag_ref, None, curr_user, ex_prt_ref=ex_part_ref)
+        add_tag_info(tag_ref, None, curr_user, ex_part_ref=ex_part_ref)
         messages.error(request, f"Unknown P/N {part_number} held in Pending Station for review.")
     return redirect(f"/count/count_tag?tag_number={int(tag_number)+1}")
+
+
+@login_required
+def count_tag_update(request):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to tag key-in. {msg}"))
+        return redirect("core:home")
+
+    curr_time = datetime.now().astimezone()
+    active_cycle_ref = context["cycle_ref"]
+    if not active_cycle_ref:
+        messages.error(request, "No active cycle is available.")
+        return redirect("count:count_tag")
+
+    post_data = request.GET
+    tag_number = post_data.get("tag_number", "").strip()
+    part_number = post_data.get("part_number", "").strip()
+    quantity = post_data.get("quantity", "").strip()
+
+    tag_ref = CycleTagDetail.objects.filter(tag_number=tag_number, tag_range__cycle=active_cycle_ref).first()
+    if not tag_ref:
+        messages.error(request, f"Tag Number {tag_number} not found.")
+        return redirect("count:count_tag")
+
+    if not tag_ref.count_record and not tag_ref.exception_record:
+        messages.error(request, f"Tag Number {tag_number} has no count record or exception.")
+        return redirect("count:count_tag")
+
+    count_record = tag_ref.count_record
+    count_exception = tag_ref.exception_record
+    part_ref = PartMaster.objects.filter(cycle=active_cycle_ref, part_number=part_number).first()
+    if part_ref:
+        if count_record:
+            count_record.part = part_ref
+            count_record.quantity = quantity
+            count_record.entered_at = curr_time
+            count_record.save()
+        if count_exception:
+            count_exception.delete()
+            count_record = CountRecord.objects.create(
+                part=part_ref,
+                cycle=active_cycle_ref,
+                source="Tag Key-in",
+                source_record_key=f"{curr_user.first_name}_{curr_time.strftime('%Y%m%d_%H%M%S')}",
+                sap_location=tag_ref.tag_range.sap_location,
+                physical_location=tag_ref.tag_range.physical_location,
+                sub_location=tag_ref.tag_range.sub_location,
+                tag_number=tag_number,
+                quantity=quantity,
+                counter_name=curr_user.first_name,
+                entered_at=curr_time,
+            )
+            add_tag_info(tag_ref, count_record, curr_user)
+        messages.success(request, f"Tag Number {tag_number} updated successfully.")
+    else:
+        if count_record:
+            tag_ref.count_record = None
+            tag_ref.save()
+            count_record.delete()
+            ex_part_ref = CountIntakeException.objects.create(
+                cycle=active_cycle_ref,
+                raw_part_number=part_number,
+                source="Tag Key-in",
+                status="Pending",
+                tag_number=tag_number,
+                quantity=quantity,
+                counter_name=curr_user.first_name,
+                sap_location=tag_ref.tag_range.sap_location,
+                physical_location=tag_ref.tag_range.physical_location,
+                sub_location=tag_ref.tag_range.sub_location,
+                created_at=curr_time,
+                created_by=curr_user,
+                updated_by=curr_user,
+            )
+            add_tag_info(tag_ref, None, curr_user, ex_part_ref=ex_part_ref)
+        if count_exception:
+            count_exception.raw_part_number = part_number
+            count_exception.quantity = quantity
+            count_exception.updated_at = curr_time
+            count_exception.updated_by = curr_user
+            count_exception.status = "Pending"
+            count_exception.save()
+        messages.error(request, f"Unknown P/N {part_number} held in Pending Station for review.")
+
+    return redirect(f"/count/count_tag?search={tag_number}")

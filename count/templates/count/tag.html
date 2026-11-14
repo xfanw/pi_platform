@@ -93,7 +93,7 @@
       </td>
       <td class="num">{{ item.quantity }}</td>
       <td>{{ item.counter_name|default:"—" }}</td>
-      <td><button type="button" class="btn btn-sm btn-primary" onclick="edit_tag_part('{{ item.tag_number }}')">Edit</button>
+      <td><button type="button" class="btn btn-sm btn-primary" onclick="edit_tag_part('{{ item.tag_number }}', '{{item.part_number}}', '{{item.quantity}}')">Edit</button>
       </td>
       {% comment %} <td><details><summary>Edit</summary><form method="post" action="{% url 'portal:count-record-correct' item.record_id %}" class="mini-correction-form">{% csrf_token %}<label>Correct P/N</label><input name="corrected_part_number" value="{{ item.effective_part_number }}"><label>Correct Qty</label><input name="corrected_quantity" type="number" min="0" step="0.0001" value="{{ item.effective_quantity }}"><label>Reason</label><input name="reason_code" value="Tag count correction" required><label>Comment</label><input name="comment" required><button type="submit">Submit Correction</button></form></details></td></tr> {% endcomment %}
       {% empty %}<tr><td colspan="6" class="mut">No counted tags match the current filter.</td></tr>{% endfor %}

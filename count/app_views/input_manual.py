@@ -203,3 +203,69 @@ def count_manual_create(request):
         )
         messages.error(request, f"Unknown P/N {part_number} held in Pending Station for review.")
     return redirect("count:count_manual")
+
+
+@login_required
+def count_manual_update(request):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to manual key-in. {msg}"))
+        return redirect("core:home")
+
+    curr_time = datetime.now().astimezone()
+    active_cycle_ref = context["cycle_ref"]
+    if not active_cycle_ref:
+        messages.error(request, "No active cycle is available.")
+        return redirect("count:count_manual")
+
+    post_data = request.GET
+    record_id = post_data.get("id")
+    quantity = post_data.get("quantity")
+
+    count_record = CountRecord.objects.filter(id=record_id, cycle=active_cycle_ref).first()
+    if not count_record:
+        messages.error(request, "Manual key-in part not found.")
+        return redirect("count:count_manual")
+
+    count_record.quantity = quantity
+    count_record.entered_by = curr_user
+    count_record.entered_at = curr_time
+    count_record.save()
+    messages.success(request, "Manual key-in part updated successfully.")
+
+    return redirect(f"/count/count_manual?search={count_record.part.part_number}")
+
+
+@login_required
+def count_manual_delete(request, id):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to manual key-in. {msg}"))
+        return redirect("core:home")
+
+    active_cycle_ref = context["cycle_ref"]
+    if not active_cycle_ref:
+        messages.error(request, "No active cycle is available.")
+        return redirect("count:count_manual")
+
+    try:
+        record = CountRecord.objects.get(id=id, cycle=active_cycle_ref)
+        record.delete()
+        messages.success(request, "Manual key-in part removed successfully.")
+    except CountRecord.DoesNotExist:
+        messages.error(request, "Manual key-in part not found.")
+    return redirect("count:count_manual")

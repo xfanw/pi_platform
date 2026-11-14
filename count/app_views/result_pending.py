@@ -1,7 +1,8 @@
 from access_control.app_functions import is_global_manager, is_plant_manager, my_sap_loc
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
-from count.models import CountIntakeException, CountRecord
+from count.app_functions.input import add_tag_info
+from count.models import CountIntakeException, CountRecord, CycleTagDetail
 from cycles.app_models.inventory_models import PartMaster
 from site_setting.system_setting.sys_settings import SysSet
 
@@ -132,7 +133,7 @@ def pending_part_create(request):
             reviewed_at=curr_time,
         )
         ex_part = CountIntakeException.objects.filter(id=item_id).first()
-        CountRecord.objects.create(
+        count_ref = CountRecord.objects.create(
             part=ex_part.disposition_part,
             cycle=active_cycle,
             source=ex_part.source,
@@ -146,6 +147,9 @@ def pending_part_create(request):
             entered_by=ex_part.created_by,
             entered_at=ex_part.created_at,
         )
+        tag_ref = CycleTagDetail.objects.filter(tag_number=ex_part.tag_number, tag_range__cycle=active_cycle).first()
+        if tag_ref:
+            add_tag_info(tag_ref, count_ref, curr_user, ex_part_ref=None)
         messages.success(request, f"New part {raw_part_no} created successfully.")
     except Exception as e:
         messages.error(request, f"Failed to create new part: {str(e)}")
@@ -180,7 +184,7 @@ def pending_part_map(request):
         messages.error(request, "Existing part number field is required to map a part.")
         return redirect("count:pending_station")
 
-    existing_part = PartMaster.objects.filter(part_number=existing_part_number).first()
+    existing_part = PartMaster.objects.filter(cycle=active_cycle, part_number=existing_part_number).first()
     if not existing_part:
         messages.error(request, f"Input P/N {existing_part_number} does not exist.")
         return redirect("count:pending_station")
@@ -190,7 +194,7 @@ def pending_part_map(request):
             status="Mapped to Existing Part", disposition_part=existing_part, reviewed_by=curr_user, reviewed_at=curr_time
         )
         ex_part = CountIntakeException.objects.filter(id=item_id).first()
-        CountRecord.objects.create(
+        count_ref = CountRecord.objects.create(
             part=ex_part.disposition_part,
             cycle=active_cycle,
             source=ex_part.source,
@@ -204,6 +208,9 @@ def pending_part_map(request):
             entered_by=ex_part.created_by,
             entered_at=ex_part.created_at,
         )
+        tag_ref = CycleTagDetail.objects.filter(tag_number=ex_part.tag_number, tag_range__cycle=active_cycle).first()
+        if tag_ref:
+            add_tag_info(tag_ref, count_ref, curr_user, ex_part_ref=None)
         messages.success(request, f"Part {existing_part_number} mapped to existing part successfully.")
     except Exception as e:
         messages.error(request, f"Failed to map part: {str(e)}")

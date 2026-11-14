@@ -101,10 +101,10 @@ function confirm_remove(range_id) {
         showCancelButton: true,
         confirmButtonColor: "#3085d6",
         cancelButtonColor: "#d33",
-        confirmButtonText: `Create`,
+        confirmButtonText: `Remove`,
         allowOutsideClick: false,
         didOpen: () => {
-            swal_delay_confirm();
+            swal_delay_confirm(1000);
         },
     }).then((result) => {
         if (result.isConfirmed) {

@@ -14,38 +14,21 @@ $("#count-tag-number").keydown(function (e) {
     }
 });
 
-function edit_tag_part(tag_num) {
+function edit_tag_part(tag_num, part_number, qty) {
     Swal.fire({
         title: `Tag Number: ${tag_num}`,
-        html: `<form id='new_plant_form' action='/site_setting/create_plant'>
+        html: `<form id='edit_tag_form' action='/count/count_tag_update'>
+                  <input type='hidden' name='tag_number' value='${tag_num}'>
                   <div class='row col-md-12'>
                     <div class='input-group'>
-                        <div class='input-group-text' style='min-width:11em'>Plant Code</div>
-                        <input id="plant_code"  name="plant_code" maxlength="16" required placeholder="eg.TCGA" autocomplete="off" onkeyup='upper_case(this)'>
+                        <div class='input-group-text' style='min-width:11em'>Part Number</div>
+                        <input id="part_number"  name="part_number" maxlength="16" required placeholder="eg.TCGA" autocomplete="off" onkeyup='upper_case(this)' value="${part_number}">
                     </div>
                   </div>
                   <div class='row col-md-12 mt-2'>
                     <div class='input-group'>
-                        <div class='input-group-text' style='min-width:11em'>Plant Name</div>
-                        <input name="plant_name" required placeholder="eg.Texas Campus A" autocomplete="off">
-                    </div>
-                  </div>
-                  <div class='row col-md-12 mt-2'>
-                    <div class='input-group'>
-                        <div class='input-group-text' style='min-width:11em'>Site</div>
-                        <input name="site" required placeholder="eg.FII-USA" autocomplete="off">
-                    </div>
-                  </div>
-                  <div class='row col-md-12 mt-2'>
-                    <div class='input-group'>
-                        <div class='input-group-text' style='min-width:11em'>Customer</div>
-                        <input name="customer" required autocomplete="off">
-                    </div>
-                  </div>
-                  <div class='row col-md-12 mt-2'>
-                    <div class='input-group'>
-                        <div class='input-group-text' style='min-width:11em'> Time Zone</div>
-                        <select class='form-control' name='timezone'>${timezone_option}</select>
+                        <div class='input-group-text' style='min-width:11em'>Quantity</div>
+                        <input name="quantity" required placeholder="eg.10" autocomplete="off" value="${qty}">
                     </div>
                   </div>
                 </form>
@@ -53,11 +36,11 @@ function edit_tag_part(tag_num) {
         showCancelButton: true,
         confirmButtonColor: "#3085d6",
         cancelButtonColor: "#d33",
-        confirmButtonText: `Create`,
+        confirmButtonText: `Update`,
         allowOutsideClick: false,
     }).then(function (result) {
         if (result.isConfirmed) {
-            $("#new_plant_form").submit();
+            $("#edit_tag_form").submit();
         }
     }); // end swal
 }

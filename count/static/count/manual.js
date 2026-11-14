@@ -117,3 +117,48 @@ function set_counter_roster(selected_sap) {
         });
     }
 }
+
+function edit_manual_part(id, part_number, qty) {
+    Swal.fire({
+        title: `Edit Manual Part ${part_number}`,
+        html: `<form id='edit_tag_form' action='/count/count_manual_update'>
+                  <input type='hidden' name='id' value='${id}'>
+
+                  <div class='row col-md-12 mt-2'>
+                    <div class='input-group'>
+                        <div class='input-group-text' style='min-width:11em'>Quantity</div>
+                        <input name="quantity" required placeholder="eg.10" autocomplete="off" value="${qty}">
+                    </div>
+                  </div>
+                </form>
+                `,
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: `Update`,
+        allowOutsideClick: false,
+    }).then(function (result) {
+        if (result.isConfirmed) {
+            $("#edit_tag_form").submit();
+        }
+    }); // end swal
+}
+
+function remove_manual_part(id) {
+    Swal.fire({
+        title: "Are you sure?",
+        text: "Remove this manual key-in part?",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: `Remove`,
+        allowOutsideClick: false,
+        didOpen: () => {
+            swal_delay_confirm(1000);
+        },
+    }).then((result) => {
+        if (result.isConfirmed) {
+            location.href = "/count/count_manual_delete/" + id;
+        }
+    });
+}

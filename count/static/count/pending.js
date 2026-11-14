@@ -85,7 +85,7 @@ function reject_part(item_id, raw_part_no) {
         confirmButtonText: `Reject`,
         allowOutsideClick: false,
         didOpen: () => {
-            swal_delay_confirm();
+            swal_delay_confirm(1000);
         },
     }).then(function (result) {
         if (result.isConfirmed) {

@@ -10,7 +10,7 @@ function remove_ex_part(ex_part_id) {
         confirmButtonText: `Remove`,
         allowOutsideClick: false,
         didOpen: () => {
-            swal_delay_confirm();
+            swal_delay_confirm(1000);
         },
     }).then((result) => {
         if (result.isConfirmed) {

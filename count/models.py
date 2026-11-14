@@ -136,7 +136,7 @@ class CycleTagDetail(TimeStampedModel):
     tag_number = models.BigIntegerField(unique=True)
     count_record = models.ForeignKey(CountRecord, on_delete=models.PROTECT, related_name="tag_details", null=True, blank=True)
     exception_record = models.ForeignKey(
-        CountIntakeException, null=True, blank=True, on_delete=models.PROTECT, related_name="tag_details"
+        CountIntakeException, null=True, blank=True, on_delete=models.SET_NULL, related_name="tag_details"
     )
     is_counted = models.BooleanField(default=False)
 
