@@ -27,6 +27,19 @@ class CycleVariance(models.Model):
             models.UniqueConstraint(fields=["cycle", "sap_location", "part"], name="uq_variance_cycle_sap_location_part_grain")
         ]
 
+    @property
+    def inventory_type(self):
+        return "CS" if self.sap_location.inventory_type == "CONSIGNED" else "TK"
+
+    @property
+    def qty_accuracy(self):
+        if self.sap_quantity == 0 and self.count_quantity == 0:
+            return 100
+        elif self.sap_quantity == 0:
+            return 0
+
+        return min(self.count_quantity, self.sap_quantity) / max(self.count_quantity, self.sap_quantity) * 100
+
 
 # class VarianceResolutionStatus(models.TextChoices):
 #     NEEDS_REVIEW = "NEEDS_REVIEW", "Needs Review"

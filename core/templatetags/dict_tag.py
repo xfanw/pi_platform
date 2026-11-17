@@ -38,6 +38,3 @@ def strf_dict_key(my_dict_str):
         return ", ".join(eval(my_dict_str).keys())
     except Exception as e:
         return "-- --"
-
-
-

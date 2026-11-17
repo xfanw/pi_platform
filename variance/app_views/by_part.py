@@ -1,7 +1,9 @@
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
+from count.models import CountRecord
 from cycles.app_models.inventory_models import PartMaster
 from cycles.models import PICycle
+from site_setting.models import SAPLocation
 from variance.models import CycleVariance
 
 PERMISSION = "Variance.Variance by PN"
@@ -28,7 +30,11 @@ def variance_by_part(request):
             messages.error(request, "No active or closed cycle found for the plant.")
             return redirect("core:home")
 
+    can_manage, msg = check_permission(curr_user, plant, PERMISSION, True)
+    context["can_manage"] = can_manage
     part_number = request.GET.get("part_number", "").strip()
+    context["selected_sap_code"] = request.GET.get("sap_code", "").strip()
+
     if not part_number:
         return render(request, "variance/by_part.html", context)
 
@@ -38,6 +44,21 @@ def variance_by_part(request):
         return render(request, "variance/by_part.html", context)
 
     context["part"] = part
-    has_var = CycleVariance.objects.filter(part=part).exists() if part else False
-    context["has_var"] = has_var
+    var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant, part=part)
+    context["var_set"] = var_set
+    count_set = CountRecord.objects.filter(cycle=active_cycle, part=part).order_by("sap_location__code", "entered_at")
+    context["count_set"] = count_set
+
+    context["var_sap_code"] = list(var_set.exclude(variance_quantity=0).values_list("sap_location__code", flat=True).distinct())
+    review_rows = []
+    for sap_code in context["var_sap_code"]:
+        review_rows.append(
+            {
+                "sap_location": SAPLocation.objects.filter(plant=plant, code=sap_code).first(),
+                "variance": var_set.filter(sap_location__code=sap_code).first(),
+                "comments": var_set.filter(sap_location__code=sap_code).first().comments.order_by("created_at"),
+                "resolution": var_set.filter(sap_location__code=sap_code).first().resolutions.first(),
+            }
+        )
+    context["review_rows"] = review_rows
     return render(request, "variance/by_part.html", context)
