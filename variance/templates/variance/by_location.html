@@ -1,0 +1,28 @@
+{% extends "core/base.html" %}
+{% block title %}Variance by Location | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading">
+  <div><h1>Variance by Location</h1>
+    <p class="page-sub">SAP-location summary using the same live calculation and current approved data scope as the Live Variance Report.</p>
+  </div>
+</div>
+<section class="card search-card">
+<form method="get" class="variance-filters location-filters">
+  <div><label>Ownership</label>
+    <select name="department">
+      <option value="">All</option>
+      {% for item in departments %}
+      <option value="{{ item.pk }}" {% if selected_department == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div><label>Inventory Type</label>
+  <select name="inventory_type">
+  <option value="">All</option><option value="TK" {% if selected_type == 'TK' %}selected{% endif %}>TK · FII Owned</option>
+  <option value="CS" {% if selected_type == 'CS' %}selected{% endif %}>CS · Consigned</option>
+  </select>
+  </div>
+  <input type="hidden" name="show" value="all"><button type="submit">Apply</button><a class="btn ghost" href="{% url 'portal:variance-by-location' %}">Clear</a>
+</form></section>
+<section class="card"><div class="table-section-head"><div><h2>SAP Location Summary</h2><span class="mut">Target accuracy ≥ 99.0% · red is below target; green has reached target.</span></div></div>{% include "portal/_variance_location_table.html" %}</section>
+{% endblock %}
