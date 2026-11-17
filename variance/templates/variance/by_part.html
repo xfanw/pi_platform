@@ -76,8 +76,8 @@
         <div><span>SAP Document</span><b>{{ row.resolution.sap_document_number|default:'—' }}</b></div>
       </div>
 
-      {% if row.comments %}
-      <div class="variance-current-reason"><b>Decision note</b><span>{{ row.comments.first.body }}</span></div>{% endif %}
+      {% if row.resolution.reason %}<div class="variance-current-reason"><b>Decision note</b><span>{{ row.resolution.reason }} by {{ row.resolution.decided_by.username }} at {{ row.resolution.decided_at|date:'Y-m-d H:i' }}</span></div>{% endif %}
+      
       <div class="variance-thread">
         <div class="variance-thread-title">Comment thread</div>
         {% for comment in row.comments %}
@@ -91,11 +91,12 @@
       {% if not is_closed %}
       <div class="variance-review-actions">
         {% if can_manage %}
-        <form method="post" action="{% url 'core:home' %}" class="variance-comment-form">
+        <form method="post" action="{% url 'variance:add_comment' %}" class="variance-comment-form">
+        {% csrf_token %}
         {% comment %} <form method="post" action="{% url 'portal:variance-comment' %}" class="variance-comment-form"> {% endcomment %}
-          <input type="hidden" name="part_id" value="{{ row.variance.id }}">
+          <input type="hidden" name="variance_id" value="{{ row.variance.id }}">
           {% comment %} <input type="hidden" name="submission_key" value="{{ row.comment_submission_key }}"> {% endcomment %}
-          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          {% comment %} <input type="hidden" name="next" value="{{ request.get_full_path }}"> {% endcomment %}
           <label>New comment</label>
           <div>
             <input name="comment" maxlength="2000" required placeholder="Add evidence, explanation or follow-up">
@@ -104,19 +105,19 @@
         </form>
         {% endif %}
         {% if can_manage %}
-        <form method="post" action="{% url 'core:home' %}" class="variance-decision-form">
+        <form method="post" action="{% url 'variance:add_decision' %}" class="variance-decision-form">
         {% comment %} <form method="post" action="{% url 'portal:variance-decision' %}" class="variance-decision-form"> {% endcomment %}
           {% csrf_token %}
-          <input type="hidden" name="part_id" value="{{ row.variance.part_id }}">
-          <input type="hidden" name="sap_location_id" value="{{ row.variance.sap_location_id }}">
-          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="variance_id" value="{{ row.variance.id }}">
+          {% comment %} <input type="hidden" name="sap_location_id" value="{{ row.variance.sap_location_id }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}"> {% endcomment %}
           <input type="hidden" name="decision" value="">
           <label>PI-day decision</label>
           {% if not row.resolution or not row.resolution.status == 'Needs Review' %}
           <div>
             <input name="reason" maxlength="240" placeholder="Optional decision reason">
-            <button type="submit" class="btn btn-sm btn-primary" onclick="this.form.elements.decision.value='TO_POST'">Post</button>
-            <button type="submit" class="btn btn-sm btn-danger" onclick="this.form.elements.decision.value='NOT_POST'">Not Post</button>
+            <button type="submit" class="btn btn-sm btn-primary" onclick="this.form.elements.decision.value='To Post'">Post</button>
+            <button type="submit" class="btn btn-sm btn-danger" onclick="this.form.elements.decision.value='Not Post'">Not Post</button>
           </div>
           {% else %}
           <p class="mut">Decision recorded. A Not Post line remains unresolved and stays in Live Variance.</p>
