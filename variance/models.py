@@ -1,5 +1,3 @@
-import uuid
-
 from django.conf import settings
 from django.db import models
 
@@ -74,49 +72,49 @@ class VarianceComment(models.Model):
 #         ordering = ["created_at"]
 
 
-class PostBatchStatus(models.TextChoices):
-    DRAFT = "DRAFT", "Draft"
-    POSTED = "POSTED", "Posted"
-    CANCELLED = "CANCELLED", "Cancelled"
+# class PostBatchStatus(models.TextChoices):
+#     DRAFT = "DRAFT", "Draft"
+#     POSTED = "POSTED", "Posted"
+#     CANCELLED = "CANCELLED", "Cancelled"
 
 
-class PostBatch(TimeStampedModel):
-    batch_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="post_batches")
-    name = models.CharField(max_length=160)
-    status = models.CharField(max_length=12, choices=PostBatchStatus.choices, default=PostBatchStatus.DRAFT)
-    note = models.CharField(max_length=500, blank=True)
-    sap_document_number = models.CharField(max_length=80, blank=True)
-    posting_date = models.DateField(null=True, blank=True)
-    confirmed_at = models.DateTimeField(null=True, blank=True)
-    confirmed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="post_batches_confirmed",
-    )
-    row_version = models.PositiveBigIntegerField(default=1)
+# class PostBatch(TimeStampedModel):
+#     batch_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="post_batches")
+#     name = models.CharField(max_length=160)
+#     status = models.CharField(max_length=12, choices=PostBatchStatus.choices, default=PostBatchStatus.DRAFT)
+#     note = models.CharField(max_length=500, blank=True)
+#     sap_document_number = models.CharField(max_length=80, blank=True)
+#     posting_date = models.DateField(null=True, blank=True)
+#     confirmed_at = models.DateTimeField(null=True, blank=True)
+#     confirmed_by = models.ForeignKey(
+#         settings.AUTH_USER_MODEL,
+#         null=True,
+#         blank=True,
+#         on_delete=models.CASCADE,
+#         related_name="post_batches_confirmed",
+#     )
+#     row_version = models.PositiveBigIntegerField(default=1)
 
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=["cycle", "name"], name="uq_post_batch_cycle_name")]
-        ordering = ["-created_at"]
+#     class Meta:
+#         constraints = [models.UniqueConstraint(fields=["cycle", "name"], name="uq_post_batch_cycle_name")]
+#         ordering = ["-created_at"]
 
 
-class PostBatchLine(models.Model):
-    line_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    batch = models.ForeignKey(PostBatch, on_delete=models.CASCADE, related_name="lines")
-    resolution = models.ForeignKey(VarianceResolution, on_delete=models.CASCADE, related_name="post_batch_lines")
-    part_number_snapshot = models.CharField(max_length=80)
-    sap_location_code_snapshot = models.CharField(max_length=16)
-    inventory_type_snapshot = models.CharField(max_length=2)
-    moving_average_price_snapshot = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
-    variance_quantity_snapshot = models.DecimalField(max_digits=22, decimal_places=4)
-    variance_value_snapshot = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
-    movement_type = models.CharField(max_length=3)
-    is_included = models.BooleanField(default=True)
-    exclusion_note = models.CharField(max_length=240, blank=True)
+# class PostBatchLine(models.Model):
+#     line_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     batch = models.ForeignKey(PostBatch, on_delete=models.CASCADE, related_name="lines")
+#     resolution = models.ForeignKey(VarianceResolution, on_delete=models.CASCADE, related_name="post_batch_lines")
+#     part_number_snapshot = models.CharField(max_length=80)
+#     sap_location_code_snapshot = models.CharField(max_length=16)
+#     inventory_type_snapshot = models.CharField(max_length=2)
+#     moving_average_price_snapshot = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
+#     variance_quantity_snapshot = models.DecimalField(max_digits=22, decimal_places=4)
+#     variance_value_snapshot = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
+#     movement_type = models.CharField(max_length=3)
+#     is_included = models.BooleanField(default=True)
+#     exclusion_note = models.CharField(max_length=240, blank=True)
 
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=["batch", "resolution"], name="uq_post_batch_line")]
-        ordering = ["sap_location_code_snapshot", "part_number_snapshot"]
+#     class Meta:
+#         constraints = [models.UniqueConstraint(fields=["batch", "resolution"], name="uq_post_batch_line")]
+#         ordering = ["sap_location_code_snapshot", "part_number_snapshot"]
