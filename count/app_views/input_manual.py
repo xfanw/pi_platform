@@ -8,6 +8,7 @@ from cycles.models import (
     CycleSAPLocation,
     CycleSubLocation,
 )
+from variance.app_functions import delete_variance_count, update_variance_count, update_variance_count, update_variance_count
 
 PERMISSION = "Count.Manual Key-In"
 
@@ -169,7 +170,7 @@ def count_manual_create(request):
     part_ref = PartMaster.objects.filter(cycle=active_cycle_ref, part_number=part_number).first()
     # counter_employee = CounterRoster.objects.filter(display_name=counter_name).order_by("-id").first()
     if part_ref:
-        CountRecord.objects.create(
+        count_ref = CountRecord.objects.create(
             cycle=active_cycle_ref,
             source="Manual Key-in",
             source_record_key=f"{counter_name}_{curr_time.strftime('%Y%m%d_%H%M%S')}",
@@ -184,6 +185,8 @@ def count_manual_create(request):
             entered_at=curr_time,
             accepted_at=curr_time,
         )
+
+        update_variance_count(count_ref)
 
         messages.success(request, "Count record created successfully.")
     else:
@@ -239,7 +242,7 @@ def count_manual_update(request):
     count_record.entered_at = curr_time
     count_record.save()
     messages.success(request, "Manual key-in part updated successfully.")
-
+    update_variance_count(count_record)
     return redirect(f"/count/count_manual?search={count_record.part.part_number}")
 
 
@@ -264,6 +267,7 @@ def count_manual_delete(request, id):
 
     try:
         record = CountRecord.objects.get(id=id, cycle=active_cycle_ref)
+        delete_variance_count(record)
         record.delete()
         messages.success(request, "Manual key-in part removed successfully.")
     except CountRecord.DoesNotExist:

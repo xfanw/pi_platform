@@ -7,6 +7,8 @@ from core.context_processors import get_basic_info
 from core.excel_file_handler.inventory_sap_part import sap_part_batch_upload, sap_part_batch_validate, sap_part_excel_bytes
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import BookInventoryLine, PartMaster, TempSAPPartDetail, TempSAPPartMain
+from variance.app_functions import create_variance
+from variance.models import CycleVariance
 
 PERMISSION = "Book Inventary.SAP Inventary"
 
@@ -112,7 +114,7 @@ def sap_part_create(request):
         messages.error(request, f"P/N {part_number} already exists in SAP Location {sap_location_code}. Edit its quantity instead.")
         return redirect("cycles:sap_part_setup")
 
-    BookInventoryLine.objects.create(
+    sap_inv = BookInventoryLine.objects.create(
         cycle=active_cycle_ref,
         sap_location=sap_location_ref.sap_location,
         part=part_ref,
@@ -120,6 +122,7 @@ def sap_part_create(request):
         created_by=curr_user,
         updated_by=curr_user,
     )
+    create_variance(sap_inv, None)
     messages.success(request, f"P/N {part_number} added to SAP Location {sap_location_code}.")
     return redirect("cycles:sap_part_setup")
 
@@ -157,6 +160,21 @@ def sap_part_update(request, line_id):
     sap_part_ref.updated_by = curr_user
     sap_part_ref.updated_at = datetime.now().astimezone()
     sap_part_ref.save()
+
+    # sap_part_ref.refresh_from_db()
+
+    var_ref = CycleVariance.objects.filter(
+        plant=plant,
+        cycle=active_cycle_ref,
+        part=sap_part_ref.part,
+        sap_location=sap_part_ref.sap_location,
+    ).first()
+    if var_ref:
+        curr_variance_qty = var_ref.variance_quantity - (quantity - var_ref.sap_quantity)
+        var_ref.sap_quantity = quantity
+        var_ref.variance_quantity = curr_variance_qty
+        var_ref.variance_value = curr_variance_qty * sap_part_ref.part.price
+        var_ref.save()
     messages.success(request, f"P/N {sap_part_ref.part.part_number} in {sap_part_ref.sap_location.code} updated successfully.")
     return redirect("cycles:sap_part_setup")
 
@@ -287,10 +305,11 @@ def sap_part_batch_confirm(request, batch_id):
     curr_time = datetime.now().astimezone()
     detail_set = TempSAPPartDetail.objects.filter(batch=batch_ref, is_valid=True).order_by("id")
 
+    new_sap_inv_list = []
     try:
         with transaction.atomic():
             BookInventoryLine.objects.filter(cycle=active_cycle_ref, sap_location__plant=plant).delete()
-            BookInventoryLine.objects.bulk_create(
+            new_sap_inv_list = BookInventoryLine.objects.bulk_create(
                 [
                     BookInventoryLine(
                         cycle=detail.cycle,
@@ -306,6 +325,10 @@ def sap_part_batch_confirm(request, batch_id):
     except Exception as e:
         messages.error(request, f"Error importing SAP inventory. {clean_errors(e)}")
         return redirect("cycles:sap_part_batch", batch_id=batch_ref.id)
+    if new_sap_inv_list:
+        CycleVariance.objects.filter(plant=plant, cycle=active_cycle_ref).delete()
+        for sap_inv in new_sap_inv_list:
+            create_variance(sap_inv, None)
 
     batch_ref.status = "Imported"
     batch_ref.imported_count = detail_set.count()
