@@ -4,6 +4,7 @@ from core.context_processors import get_basic_info
 from count.models import CountIntakeException, CountRecord, CycleTagDetail
 from cycles.app_models.inventory_models import PartMaster
 from site_setting.system_setting.sys_settings import SysSet
+from variance.app_functions import update_variance_count
 
 PERMISSION = "Count.Pending Station"
 
@@ -147,6 +148,7 @@ def pending_part_create(request):
             entered_at=ex_part.created_at,
         )
         tag_ref = CycleTagDetail.objects.filter(tag_number=ex_part.tag_number, tag_range__cycle=active_cycle).first()
+        update_variance_count(count_ref)
         if tag_ref:
             CycleTagDetail.objects.filter(tag_number=tag_ref.tag_number).update(
                 count_record=count_ref, exception_record=None, is_counted=True, updated_by=curr_user

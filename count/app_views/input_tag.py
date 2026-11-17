@@ -5,6 +5,8 @@ from count.models import CountIntakeException, CountRecord, CycleTagDetail
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PartMaster
 
+from variance.app_functions import delete_variance_count, update_variance_count
+
 PERMISSION = "Setting.Count.Tag Key-In"
 
 
@@ -148,7 +150,7 @@ def count_tag_create(request):
         CycleTagDetail.objects.filter(tag_number=tag_number).update(
             count_record=count_record, exception_record=None, is_counted=True, updated_by=curr_user
         )
-
+        update_variance_count(count_record)
         messages.success(request, "Count record created successfully.")
     else:
         ex_part_ref = CountIntakeException.objects.create(
@@ -234,11 +236,13 @@ def count_tag_update(request):
             CycleTagDetail.objects.filter(tag_number=tag_ref.tag_number).update(
                 count_record=count_record, exception_record=None, is_counted=True, updated_by=curr_user
             )
+        update_variance_count(count_record)
         messages.success(request, f"Tag Number {tag_number} updated successfully.")
     else:
         if count_record:
             tag_ref.count_record = None
             tag_ref.save()
+            delete_variance_count(count_record)
             count_record.delete()
             ex_part_ref = CountIntakeException.objects.create(
                 cycle=active_cycle_ref,

@@ -1,17 +1,23 @@
 from count.models import CountRecord
 from django.db.models import Sum
+from decimal import Decimal
 from variance.models import CycleVariance
 
 
 def create_variance(sap_book_ref, count_ref):
+    if not sap_book_ref and not count_ref:
+        return
+    cycle = sap_book_ref.cycle if sap_book_ref else count_ref.cycle if count_ref else None
+    plant = cycle.plant if cycle else None
+    sap_location = sap_book_ref.sap_location if sap_book_ref else count_ref.sap_location if count_ref else None
     sap_qty = sap_book_ref.quantity if sap_book_ref else 0
-    count_qty = count_ref.quantity if count_ref else 0
+    count_qty = Decimal(count_ref.quantity) if count_ref else 0
     part = sap_book_ref.part if sap_book_ref else count_ref.part if count_ref else None
     CycleVariance.objects.create(
-        plant=sap_book_ref.plant if sap_book_ref else count_ref.cycle.plant if count_ref else None,
-        cycle=sap_book_ref.cycle if sap_book_ref else count_ref.cycle if count_ref else None,
+        plant=plant,
+        cycle=cycle,
         part=part,
-        sap_location=sap_book_ref.sap_location if sap_book_ref else count_ref.sap_location if count_ref else None,
+        sap_location=sap_location,
         sap_quantity=sap_qty,
         count_quantity=count_qty,
         variance_quantity=count_qty - sap_qty,
