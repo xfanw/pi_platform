@@ -1,9 +1,10 @@
+from django.db.models.aggregates import Count
+from django.db.models.functions import Abs
+
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
-from count.models import CountRecord
-from cycles.app_models.inventory_models import PartMaster
+from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PICycle
-from site_setting.models import SAPLocation
 from variance.models import CycleVariance
 
 PERMISSION = "Variance.Variance by Location"
@@ -29,36 +30,84 @@ def variance_by_location(request):
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")
             return redirect("core:home")
+    post_data = request.GET
+    selected_department = post_data.get("department", "")
+    selected_type = post_data.get("inventory_type", "")
+    context["selected_department"] = selected_department
+    context["selected_type"] = selected_type
 
-    can_manage, msg = check_permission(curr_user, plant, PERMISSION, True)
-    context["can_manage"] = can_manage
-    part_number = request.GET.get("part_number", "").strip()
-    context["selected_sap_code"] = request.GET.get("sap_code", "").strip()
+    if selected_type in ("", "FII_OWNED"):
+        if not selected_department:
+            tk_variance = (
+                CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+                .filter(sap_location__inventory_type="FII_OWNED")
+                .values("sap_location__code", "sap_location__department")
+                .annotate(
+                    total_part_count=Count("part", distinct=True),
+                    var_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
+                    net_variance=Sum("variance_value"),
+                    abs_variance=Sum(Abs("variance_value")),
+                    book_value=Sum(F("sap_quantity") * F("map_price")),
+                    net_var_percent=(1 - Abs(F("net_variance") / F("book_value"))) * 100,
+                    abs_var_percent=(1 - F("abs_variance") / F("book_value")) * 100,
+                )
+            )
+        else:
+            tk_variance = (
+                CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+                .filter(sap_location__department=selected_department)
+                .filter(sap_location__inventory_type="FII_OWNED")
+                .values("sap_location__code", "sap_location__department")
+                .annotate(
+                    total_part_count=Count("part", distinct=True),
+                    var_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
+                    net_variance=Sum("variance_value"),
+                    abs_variance=Sum(Abs("variance_value")),
+                    book_value=Sum(F("sap_quantity") * F("map_price")),
+                    net_var_percent=(1 - Abs(F("net_variance") / F("book_value"))) * 100,
+                    abs_var_percent=(1 - F("abs_variance") / F("book_value")) * 100,
+                )
+            )
+        context["tk_variance"] = tk_variance
 
-    if not part_number:
-        return render(request, "variance/by_location.html", context)
+    if selected_type in ("", "CONSIGNED"):
+        if not selected_department:
+            cs_variance = (
+                CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+                .filter(sap_location__inventory_type="CONSIGNED")
+                .values("sap_location__code", "sap_location__department")
+                .annotate(
+                    part_count=Count("part", distinct=True),
+                    variance_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
+                    abs_count_variance=Sum(Abs("variance_quantity")),
+                )
+            )
+        else:
+            cs_variance = (
+                CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+                .filter(sap_location__department=selected_department)
+                .filter(sap_location__inventory_type="CONSIGNED")
+                .values("sap_location__code", "sap_location__department")
+                .annotate(
+                    part_count=Count("part", distinct=True),
+                    variance_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
+                    abs_count_variance=Sum(Abs("variance_quantity")),
+                )
+            )
 
-    part = PartMaster.objects.filter(cycle=active_cycle, part_number=part_number).first()
-    if not part:
-        messages.error(request, f"Part {part_number} not found in the cycle {active_cycle}.")
-        return render(request, "variance/by_location.html", context)
+        for item in cs_variance:
+            curr_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant, sap_location__code=item["sap_location__code"])
+            curr_total_acc = 0
+            for curr_cs in curr_set:
+                curr_total_acc += curr_cs.qty_accuracy
+            item["acc_avg"] = curr_total_acc / item["part_count"]
 
-    context["part"] = part
-    var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant, part=part)
-    context["var_set"] = var_set
-    count_set = CountRecord.objects.filter(cycle=active_cycle, part=part).order_by("sap_location__code", "entered_at")
-    context["count_set"] = count_set
+        context["cs_variance"] = cs_variance
 
-    context["var_sap_code"] = list(var_set.exclude(variance_quantity=0).values_list("sap_location__code", flat=True).distinct())
-    review_rows = []
-    for sap_code in context["var_sap_code"]:
-        review_rows.append(
-            {
-                "sap_location": SAPLocation.objects.filter(plant=plant, code=sap_code).first(),
-                "variance": var_set.filter(sap_location__code=sap_code).first(),
-                "comments": var_set.filter(sap_location__code=sap_code).first().comments.order_by("created_at"),
-                "resolution": var_set.filter(sap_location__code=sap_code).first().resolutions.first(),
-            }
-        )
-    context["review_rows"] = review_rows
+    context["active_department_list"] = list(
+        CycleSAPLocation.objects.filter(plant=plant, cycle=active_cycle, is_active=True)
+        .values_list("sap_location__department", flat=True)
+        .order_by("sap_location__department")
+        .distinct()
+    )
     return render(request, "variance/by_location.html", context)

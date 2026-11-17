@@ -11,15 +11,16 @@
   <div><label>Ownership</label>
     <select name="department">
       <option value="">All</option>
-      {% for item in departments %}
-      <option value="{{ item.pk }}" {% if selected_department == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>
+      {% for item in active_department_list %}
+      <option value="{{ item}}" {% if selected_department == item %}selected{% endif %}>{{ item }}</option>
       {% endfor %}
     </select>
   </div>
   <div><label>Inventory Type</label>
   <select name="inventory_type">
-  <option value="">All</option><option value="TK" {% if selected_type == 'TK' %}selected{% endif %}>TK · FII Owned</option>
-  <option value="CS" {% if selected_type == 'CS' %}selected{% endif %}>CS · Consigned</option>
+  <option value="">All</option>
+  <option value="FII_OWNED" {% if selected_type == 'FII_OWNED' %}selected{% endif %}>TK · FII Owned</option>
+  <option value="CONSIGNED" {% if selected_type == 'CONSIGNED' %}selected{% endif %}>CS · Consigned</option>
   </select>
   </div>
   <input type="hidden" name="show" value="all"><button class='btn btn-sm btn-primary' type="submit">Apply</button><a class="btn btn-sm btn-outline-primary" href="{% url 'variance:variance_by_location' %}">Clear</a>
@@ -27,7 +28,46 @@
 <section class="card"><div class="table-section-head"><div><h2>SAP Location Summary</h2><span class="mut">Target accuracy ≥ 99.0% · red is below target; green has reached target.</span></div></div>
 {% load humanize %}
 <div class="scroll"><table class="location-variance-table"><thead><tr><th>SAP Location</th><th>Ownership</th><th>Type</th><th class="num">P/Ns</th><th class="num">Variance P/Ns</th><th class="num">TK Book Value</th><th class="num">TK Net Variance</th><th class="num">TK Accuracy</th><th class="num">TK Abs Variance</th><th class="num">TK Abs Accuracy</th><th class="num">CS Abs Qty Var</th><th class="num">CS Avg Qty Accuracy</th></tr></thead><tbody>
-{% for row in rows %}{% ifchanged row.location.inventory_type %}<tr class="location-type-group"><td colspan="12">{% if row.location.inventory_type == 'TK' %}TK · FII Owned{% else %}CS · Consigned{% endif %}</td></tr>{% endifchanged %}<tr><td><a href="{% url 'portal:variance-report' %}?sap_location={{ row.location.code|urlencode }}&show=all"><b>{{ row.location.code }}</b></a></td><td>{{ row.location.department.name }}</td><td><span class="chip {% if row.location.inventory_type == 'CS' %}corrected{% endif %}">{{ row.location.inventory_type }}</span></td><td class="num">{{ row.part_count|intcomma }}</td><td class="num">{{ row.variance_part_count|intcomma }}</td><td class="num">{% if row.location.inventory_type == 'TK' %}${{ row.metric.tk_book_value|floatformat:0|intcomma }}{% else %}—{% endif %}</td><td class="num {% if row.metric.tk_variance_value < 0 %}neg{% elif row.metric.tk_variance_value > 0 %}pos{% endif %}">{% if row.location.inventory_type == 'TK' %}${{ row.metric.tk_variance_value|floatformat:0|intcomma }}{% else %}—{% endif %}</td><td class="num">{% if row.location.inventory_type == 'TK' %}<span class="accuracy-target {% if row.metric.tk_variance_accuracy >= 99 %}met{% else %}missed{% endif %}">{{ row.metric.tk_variance_accuracy|floatformat:1 }}%</span>{% else %}—{% endif %}</td><td class="num">{% if row.location.inventory_type == 'TK' %}${{ row.metric.tk_absolute_variance|floatformat:0|intcomma }}{% else %}—{% endif %}</td><td class="num">{% if row.location.inventory_type == 'TK' %}<span class="accuracy-target {% if row.metric.tk_absolute_variance_accuracy >= 99 %}met{% else %}missed{% endif %}">{{ row.metric.tk_absolute_variance_accuracy|floatformat:1 }}%</span>{% else %}—{% endif %}</td><td class="num">{% if row.location.inventory_type == 'CS' %}{{ row.metric.cs_absolute_quantity_variance|floatformat:0|intcomma }}{% else %}—{% endif %}</td><td class="num">{% if row.location.inventory_type == 'CS' and row.metric.cs_average_pn_quantity_accuracy is not None %}<span class="accuracy-target {% if row.metric.cs_average_pn_quantity_accuracy >= 99 %}met{% else %}missed{% endif %}">{{ row.metric.cs_average_pn_quantity_accuracy|floatformat:1 }}%</span>{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="12" class="mut">No active SAP Locations are available in your approved scope.</td></tr>{% endfor %}</tbody></table></div>
+{% if tk_variance %}
+  <tr class="location-type-group"><td colspan="12">TK · FII Owned</td></tr>
+  {% for row in tk_variance %}
+  <tr>
+    <td><a href="{% url 'core:home' %}?sap_location={{ row.sap_location__code|urlencode }}&show=all"><b>{{ row.sap_location__code }}</b></a></td>
+    <td>{{ row.sap_location__department }}</td>
+    <td><span class="chip">TK</span></td>
+    <td class="num">{{ row.total_part_count|intcomma }}</td>
+    <td class="num">{{ row.var_part_count|intcomma }}</td>
+    <td class="num">${{ row.book_value|floatformat:0|intcomma }}</td>
+    <td class="num {% if row.net_variance < 0 %}neg{% elif row.net_variance > 0 %}pos{% endif %}">${{ row.net_variance|floatformat:0|intcomma }}</td>
+    <td class="num"><span class="accuracy-target {% if row.net_var_percent >= 99 %}met{% else %}missed{% endif %}">{{ row.net_var_percent|floatformat:1 }}%</span></td>
+    <td class="num">${{ row.abs_variance|floatformat:0|intcomma }}    </td>
+    <td class="num"><span class="accuracy-target {% if row.abs_var_percent >= 99 %}met{% else %}missed{% endif %}">{{ row.abs_var_percent|floatformat:1 }}%</span></td>
+    <td class="num">-- --</td>
+    <td class="num">-- --</td>
+  </tr>
+  {% endfor %}
+{% endif %}
+
+{% if cs_variance %}
+<tr class="location-type-group"><td colspan="12">CS · Consigned</td></tr>
+{% for row in cs_variance %}
+<tr>
+  <td><a href="{% url 'core:home' %}?sap_location={{ row.sap_location__code|urlencode }}&show=all"><b>{{ row.sap_location__code }}</b></a></td>
+  <td>{{ row.sap_location__department }}</td>
+  <td><span class="chip {% if row.sap_location__inventory_type == 'CONSIGNED' %}corrected{% endif %}">{{ row.sap_location__inventory_type }}</span></td>
+  <td class="num">{{ row.part_count|intcomma }}</td>
+  <td class="num">{{ row.variance_part_count|intcomma }}</td>
+  <td class="num">-- --</td>
+  <td class="num">-- --</td>
+  <td class="num">-- --</td>
+  <td class="num">-- --</td>
+  <td class="num">-- --</td>
+  <td class="num">{{ row.abs_count_variance|floatformat:0|intcomma }}</td>
+  <td class="num"><span class="accuracy-target {% if row.acc_avg >= 99 %}met{% else %}missed{% endif %}">{{ row.acc_avg|floatformat:1 }}%</span></td>
+</tr>
+{% endfor %}
+{% endif %}
+</tbody></table></div>
 
 </section>
 {% endblock %}
