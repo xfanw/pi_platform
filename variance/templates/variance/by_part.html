@@ -76,7 +76,7 @@
         <div><span>SAP Document</span><b>{{ row.resolution.sap_document_number|default:'—' }}</b></div>
       </div>
 
-      {% if row.resolution.reason %}<div class="variance-current-reason"><b>Decision note</b><span>{{ row.resolution.reason }} by {{ row.resolution.decided_by.username }} at {{ row.resolution.decided_at|date:'Y-m-d H:i' }}</span></div>{% endif %}
+      {% if row.resolution %}<div class="variance-current-reason"><b>Decision note</b><span>{{ row.resolution.reason|default:row.resolution.status }} by {{ row.resolution.decided_by.username }} at {{ row.resolution.decided_at|date:'Y-m-d H:i' }}</span></div>{% endif %}
       
       <div class="variance-thread">
         <div class="variance-thread-title">Comment thread</div>
@@ -113,7 +113,7 @@
           <input type="hidden" name="next" value="{{ request.get_full_path }}"> {% endcomment %}
           <input type="hidden" name="decision" value="">
           <label>PI-day decision</label>
-          {% if not row.resolution or not row.resolution.status == 'Needs Review' %}
+          {% if not row.resolution or row.resolution.status == 'Needs Review' %}
           <div>
             <input name="reason" maxlength="240" placeholder="Optional decision reason">
             <button type="submit" class="btn btn-sm btn-primary" onclick="this.form.elements.decision.value='To Post'">Post</button>
