@@ -1,7 +1,9 @@
-from .views import *
+from django.urls import path
 
-app_name = "core"
+from variance.app_views.by_part import variance_by_part
+
+app_name = "variance"
 
 urlpatterns = [
-    # Define your URL patterns here
+    path("variance_by_part", variance_by_part, name="variance_by_part"),
 ]

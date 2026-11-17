@@ -26,6 +26,30 @@ def create_variance(sap_book_ref, count_ref):
     )
 
 
+def update_variance_sap(sap_ref):
+    var_ref = CycleVariance.objects.filter(
+        plant=sap_ref.cycle.plant,
+        cycle=sap_ref.cycle,
+        part=sap_ref.part,
+        sap_location=sap_ref.sap_location,
+    ).first()
+
+    if var_ref:
+        count_sum = (
+            CountRecord.objects.filter(cycle=sap_ref.cycle, part=sap_ref.part, sap_location=sap_ref.sap_location).aggregate(
+                total_quantity=Sum("quantity")
+            )["total_quantity"]
+            or 0
+        )
+        sap_qty = sap_ref.quantity if sap_ref else 0
+        var_ref.sap_quantity = sap_qty
+        var_ref.variance_quantity = (count_sum or 0) - sap_qty
+        var_ref.variance_value = ((count_sum or 0) - sap_qty) * var_ref.map_price
+        var_ref.save()
+    else:
+        create_variance(sap_ref, None)
+
+
 def update_variance_count(count_ref):
     var_ref = CycleVariance.objects.filter(
         plant=count_ref.cycle.plant,

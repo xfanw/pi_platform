@@ -5,9 +5,9 @@
 <section class="card search-card">
   <form method="get" class="frow">
   <div class="field-grow"><label>Part Number</label>
-  <input name="pn" value="{{ part_number }}" placeholder="Enter exact P/N">
+  <input name="part_number" value="{{ part_number }}" placeholder="Enter exact P/N">
   </div>
-  <button type="submit">Open P/N</button>
+  <button class="btn btn-sm btn-primary" type="submit">Open P/N</button>
   {% comment %} {% if part %}<a class="btn ghost" href="{% url 'portal:variance-report' %}?search={{ part.part_number|urlencode }}">Back to Report</a>{% endif %} {% endcomment %}
   {% if part %}<a class="btn btn-sm btn-outline-primary" href="{% url 'core:home' %}?search={{ part.part_number|urlencode }}">Back to Report</a>{% endif %}
   </form>
@@ -18,11 +18,37 @@
   <div><span>P/N</span><b>{{ part.part_number }}</b></div>
   <div><span>Description</span><b>{{ part.description }}</b></div>
   <div><span>BU</span><b>{{ part.business_unit|default:'—' }}</b></div>
-  <div><span>MAP$</span><b>${{ part.moving_average_price|floatformat:2 }}</b></div>
+  <div><span>MAP$</span><b>${{ part.price|floatformat:2 }}</b></div>
 </section>
 {% if is_closed %}
 <div class="flash warn">Closed PI · Review history remains visible, but comments and decisions are locked.</div>
 {% endif %}
+
+<section class="card">
+<div class="table-section-head"><div>
+<h2>Variance by SAP Location</h2>
+<span class="mut">One line per P/N × SAP Location.</span>
+</div></div>
+<div class="scroll">
+<table>
+<thead><tr><th>SAP Location</th><th>Ownership</th><th>Type</th><th class="num">Book Qty</th><th class="num">Count Qty</th><th class="num">Variance Qty</th><th class="num">Variance Value</th><th class="num">Qty Accuracy</th></tr>
+</thead>
+<tbody>
+{% for line in lines %}
+  <tr>
+    <td><span class="chip">{{ line.sap_location_code }}</span></td>
+    <td>{{ line.department }}</td>
+    <td>{{ line.inventory_type }}</td>
+    <td class="num">{{ line.book_quantity|floatformat:-4 }}</td>
+    <td class="num">{{ line.count_quantity|floatformat:-4 }}</td>
+    <td class="num {% if line.variance_quantity < 0 %}neg{% elif line.variance_quantity > 0 %}pos{% endif %}">{{ line.variance_quantity|floatformat:-4 }}</td>
+    <td class="num {% if line.variance_value < 0 %}neg{% elif line.variance_value > 0 %}pos{% endif %}">{% if line.inventory_type == 'CS' %}—{% else %}${{ line.variance_value|floatformat:2 }}{% endif %}</td>
+    <td class="num">{% if line.quantity_accuracy is not None %}{{ line.quantity_accuracy|floatformat:2 }}%{% else %}—{% endif %}</td>
+  </tr>
+{% empty %}
+  <tr><td colspan="8" class="mut">No book or Count Qty line exists in your approved SAP-location scope.</td></tr>
+{% endfor %}
+</tbody></table></div></section>
 
 <section class="card variance-review-card">
   <div class="table-section-head"><div><h2>Review by SAP Location</h2>
@@ -71,7 +97,7 @@
           <label>New comment</label>
           <div>
             <input name="comment" maxlength="2000" required placeholder="Add evidence, explanation or follow-up">
-            <button type="submit" class="btn ghost">Add Comment</button>
+            <button type="submit" class="btn btn-sm btn-primary">Add Comment</button>
           </div>
         </form>
         {% endif %}
@@ -86,8 +112,8 @@
           {% if row.can_decide_line %}
           <div>
             <input name="reason" maxlength="240" placeholder="Optional decision reason">
-            <button type="submit" onclick="this.form.elements.decision.value='TO_POST'">Post</button>
-            <button type="submit" class="btn danger-outline" onclick="this.form.elements.decision.value='NOT_POST'">Not Post</button>
+            <button type="submit" class="btn btn-sm btn-primary" onclick="this.form.elements.decision.value='TO_POST'">Post</button>
+            <button type="submit" class="btn btn-sm btn-danger" onclick="this.form.elements.decision.value='NOT_POST'">Not Post</button>
           </div>
           {% else %}
           <p class="mut">Decision recorded. A Not Post line remains unresolved and stays in Live Variance.</p>
@@ -102,31 +128,7 @@
   {% else %}<p class="mut">No non-zero SAP-location variance lines exist for this P/N in your approved scope.</p>{% endif %}
 </section>
 
-<section class="card">
-<div class="table-section-head"><div>
-<h2>Variance by SAP Location</h2>
-<span class="mut">One line per P/N × SAP Location.</span>
-</div></div>
-<div class="scroll">
-<table>
-<thead><tr><th>SAP Location</th><th>Ownership</th><th>Type</th><th class="num">Book Qty</th><th class="num">Count Qty</th><th class="num">Variance Qty</th><th class="num">Variance Value</th><th class="num">Qty Accuracy</th></tr>
-</thead>
-<tbody>
-{% for line in lines %}
-  <tr>
-    <td><span class="chip">{{ line.sap_location_code }}</span></td>
-    <td>{{ line.department }}</td>
-    <td>{{ line.inventory_type }}</td>
-    <td class="num">{{ line.book_quantity|floatformat:-4 }}</td>
-    <td class="num">{{ line.count_quantity|floatformat:-4 }}</td>
-    <td class="num {% if line.variance_quantity < 0 %}neg{% elif line.variance_quantity > 0 %}pos{% endif %}">{{ line.variance_quantity|floatformat:-4 }}</td>
-    <td class="num {% if line.variance_value < 0 %}neg{% elif line.variance_value > 0 %}pos{% endif %}">{% if line.inventory_type == 'CS' %}—{% else %}${{ line.variance_value|floatformat:2 }}{% endif %}</td>
-    <td class="num">{% if line.quantity_accuracy is not None %}{{ line.quantity_accuracy|floatformat:2 }}%{% else %}—{% endif %}</td>
-  </tr>
-{% empty %}
-  <tr><td colspan="8" class="mut">No book or Count Qty line exists in your approved SAP-location scope.</td></tr>
-{% endfor %}
-</tbody></table></div></section>
+
 
 <section class="card">
 <div class="table-section-head"><div>
