@@ -1,0 +1,171 @@
+{% extends "core/base.html" %}
+{% block title %}Variance by P/N | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading"><div><h1>Variance by P/N</h1><p class="page-sub">Drill from one P/N into its SAP-location variance and the accepted Count Records that produced the Count Qty.</p></div></div>
+<section class="card search-card">
+  <form method="get" class="frow">
+  <div class="field-grow"><label>Part Number</label>
+  <input name="pn" value="{{ part_number }}" placeholder="Enter exact P/N">
+  </div>
+  <button type="submit">Open P/N</button>
+  {% comment %} {% if part %}<a class="btn ghost" href="{% url 'portal:variance-report' %}?search={{ part.part_number|urlencode }}">Back to Report</a>{% endif %} {% endcomment %}
+  {% if part %}<a class="btn btn-sm btn-outline-primary" href="{% url 'core:home' %}?search={{ part.part_number|urlencode }}">Back to Report</a>{% endif %}
+  </form>
+</section>
+
+{% if part %}
+<section class="workspace-band pn-heading">
+  <div><span>P/N</span><b>{{ part.part_number }}</b></div>
+  <div><span>Description</span><b>{{ part.description }}</b></div>
+  <div><span>BU</span><b>{{ part.business_unit|default:'—' }}</b></div>
+  <div><span>MAP$</span><b>${{ part.moving_average_price|floatformat:2 }}</b></div>
+</section>
+{% if is_closed %}
+<div class="flash warn">Closed PI · Review history remains visible, but comments and decisions are locked.</div>
+{% endif %}
+
+<section class="card variance-review-card">
+  <div class="table-section-head"><div><h2>Review by SAP Location</h2>
+  <span class="mut">Choose one non-zero variance location to view comments or record the one-time PI-day decision.</span>
+  {% comment %} </div><a class="btn ghost" href="{% url 'portal:post-batches' %}">Post Batches</a></div> {% endcomment %}
+  </div><button class="btn btn-sm btn-danger" onclick="show_under_developing()">Post Batches</button></div>
+  {% if review_rows %}
+  <div class="variance-location-picker pn-location-picker"><label for="pnVarianceLocation">SAP Location</label>
+  <select id="pnVarianceLocation" class="variance-location-select">
+    {% for row in review_rows %}
+    <option value="{{ row.line.sap_location_id }}">{{ row.line.sap_location_code }} · {{ row.line.department }}</option>
+    {% endfor %}
+  </select>
+  <small class='text-danger'>Only SAP Locations with a non-zero Live Variance are listed.</small></div>
+  <div class="variance-review-list compact">
+  {% for row in review_rows %}
+    <article class="variance-review-item" data-location-panel="{{ row.line.sap_location_id }}" {% if not forloop.first %}hidden{% endif %}>
+      <div class="variance-review-summary">
+        <div><span>SAP Location</span><b>{{ row.line.sap_location_code }}</b><small>{{ row.line.department }} · {{ row.line.inventory_type }}</small></div>
+        <div><span>Variance Qty</span><b class="{% if row.line.variance_quantity < 0 %}neg{% elif row.line.variance_quantity > 0 %}pos{% endif %}">{{ row.line.variance_quantity|floatformat:-4 }}</b></div>
+        <div><span>Variance Value</span><b class="{% if row.line.variance_value < 0 %}neg{% elif row.line.variance_value > 0 %}pos{% endif %}">{% if row.line.inventory_type == 'CS' %}—{% else %}${{ row.line.variance_value|floatformat:2 }}{% endif %}</b></div>
+        <div><span>Status</span>{% if row.resolution %}<b><span class="resolution-chip {% if row.resolution.status == 'POSTED' %}posted{% elif row.resolution.status == 'TO_POST' %}to-post{% elif row.resolution.status == 'NOT_POST' %}not-post{% elif row.resolution.status == 'CLOSED_RESOLVED' %}settled{% else %}review{% endif %}">{{ row.resolution.get_status_display }}</span></b>{% else %}<b><span class="resolution-chip review">Needs Review</span></b>{% endif %}</div>
+        <div><span>SAP Document</span><b>{{ row.resolution.sap_document_number|default:'—' }}</b></div>
+      </div>
+
+      {% if row.resolution.reason %}
+      <div class="variance-current-reason"><b>Decision note</b><span>{{ row.resolution.reason }}</span></div>{% endif %}
+      <div class="variance-thread">
+        <div class="variance-thread-title">Comment thread</div>
+        {% for comment in row.resolution.comments.all %}
+        <div class="variance-comment">
+          <div><b>{{ comment.created_by.username }}</b><span>{{ comment.created_at|date:'Y-m-d H:i' }}</span></div>
+          <p>{{ comment.body }}</p>
+        </div>
+        {% empty %}<p class="mut">No comments yet.</p>{% endfor %}
+      </div>
+
+      {% if not is_closed %}
+      <div class="variance-review-actions">
+        {% if can_comment %}
+        <form method="post" action="{% url 'portal:variance-comment' %}" class="variance-comment-form">
+          {% csrf_token %}<input type="hidden" name="part_id" value="{{ row.line.part_id }}">
+          <input type="hidden" name="sap_location_id" value="{{ row.line.sap_location_id }}">
+          <input type="hidden" name="submission_key" value="{{ row.comment_submission_key }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <label>New comment</label>
+          <div>
+            <input name="comment" maxlength="2000" required placeholder="Add evidence, explanation or follow-up">
+            <button type="submit" class="btn ghost">Add Comment</button>
+          </div>
+        </form>
+        {% endif %}
+        {% if can_decide %}
+        <form method="post" action="{% url 'portal:variance-decision' %}" class="variance-decision-form">
+          {% csrf_token %}
+          <input type="hidden" name="part_id" value="{{ row.line.part_id }}">
+          <input type="hidden" name="sap_location_id" value="{{ row.line.sap_location_id }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="decision" value="">
+          <label>PI-day decision</label>
+          {% if row.can_decide_line %}
+          <div>
+            <input name="reason" maxlength="240" placeholder="Optional decision reason">
+            <button type="submit" onclick="this.form.elements.decision.value='TO_POST'">Post</button>
+            <button type="submit" class="btn danger-outline" onclick="this.form.elements.decision.value='NOT_POST'">Not Post</button>
+          </div>
+          {% else %}
+          <p class="mut">Decision recorded. A Not Post line remains unresolved and stays in Live Variance.</p>
+          {% endif %}
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </article>
+  {% endfor %}
+  </div>
+  {% else %}<p class="mut">No non-zero SAP-location variance lines exist for this P/N in your approved scope.</p>{% endif %}
+</section>
+
+<section class="card">
+<div class="table-section-head"><div>
+<h2>Variance by SAP Location</h2>
+<span class="mut">One line per P/N × SAP Location.</span>
+</div></div>
+<div class="scroll">
+<table>
+<thead><tr><th>SAP Location</th><th>Ownership</th><th>Type</th><th class="num">Book Qty</th><th class="num">Count Qty</th><th class="num">Variance Qty</th><th class="num">Variance Value</th><th class="num">Qty Accuracy</th></tr>
+</thead>
+<tbody>
+{% for line in lines %}
+  <tr>
+    <td><span class="chip">{{ line.sap_location_code }}</span></td>
+    <td>{{ line.department }}</td>
+    <td>{{ line.inventory_type }}</td>
+    <td class="num">{{ line.book_quantity|floatformat:-4 }}</td>
+    <td class="num">{{ line.count_quantity|floatformat:-4 }}</td>
+    <td class="num {% if line.variance_quantity < 0 %}neg{% elif line.variance_quantity > 0 %}pos{% endif %}">{{ line.variance_quantity|floatformat:-4 }}</td>
+    <td class="num {% if line.variance_value < 0 %}neg{% elif line.variance_value > 0 %}pos{% endif %}">{% if line.inventory_type == 'CS' %}—{% else %}${{ line.variance_value|floatformat:2 }}{% endif %}</td>
+    <td class="num">{% if line.quantity_accuracy is not None %}{{ line.quantity_accuracy|floatformat:2 }}%{% else %}—{% endif %}</td>
+  </tr>
+{% empty %}
+  <tr><td colspan="8" class="mut">No book or Count Qty line exists in your approved SAP-location scope.</td></tr>
+{% endfor %}
+</tbody></table></div></section>
+
+<section class="card">
+<div class="table-section-head"><div>
+<h2>Count Record Detail</h2>
+<span class="mut">{{ records|length }} immutable accepted record(s); approved corrections are overlaid.</span>
+</div></div>
+<div class="scroll variance-record-scroll">
+<table class="variance-record-table">
+  <thead><tr><th>SAP</th><th>Location</th><th>Sub Location</th><th>Tag</th><th class="num">Qty</th><th>Counter</th><th>Source</th><th>Entered By</th><th>At</th><th>Record ID</th></tr>
+  </thead>
+  <tbody>
+  {% for item in records %}
+    <tr>
+      <td><span class="chip">{{ item.sap_location.code }}</span></td>
+      <td>{{ item.physical_location.name|default:'—' }}</td>
+      <td>{{ item.sub_location.name|default:'—' }}</td>
+      <td class="mono">{{ item.tag_number|default:'—' }}</td>
+      <td class="num">{{ item.effective_quantity|floatformat:-4 }}{% if item.has_applied_correction %}<span class="chip corrected">Corrected</span>{% endif %}</td>
+      <td>{{ item.counter_name|default:'—' }}</td><td>{{ item.get_source_display }}</td>
+      <td>{{ item.entered_by.username|default:'system' }}</td>
+      <td class="mut">{{ item.entered_at|date:'Y-m-d H:i' }}</td>
+      <td class="mono mut">{{ item.record_id|stringformat:'s'|slice:':8' }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="10" class="mut">No accepted Count Records exist for this P/N in your approved scope.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></section>
+{% else %}
+<section class="empty-state variance-empty"><div class="empty-kicker">P/N drill-down</div><h1>Enter a Part Number</h1><p>The page will show the SAP-location variance and every accepted count record behind that P/N.</p></section>{% endif %}
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const select = document.getElementById('pnVarianceLocation');
+  if (!select) return;
+  select.addEventListener('change', () => {
+    document.querySelectorAll('.variance-review-list [data-location-panel]').forEach(panel => {
+      panel.hidden = panel.dataset.locationPanel !== select.value;
+    });
+  });
+})();
+</script>{% endblock %}

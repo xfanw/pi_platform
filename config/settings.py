@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "log",
     "cycles",
     "count",
+    "variance",
 ]
 
 MIDDLEWARE = [

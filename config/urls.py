@@ -28,6 +28,7 @@ urlpatterns = [
     path("access/", include("access_control.urls")),
     path("cycles/", include("cycles.urls")),
     path("count/", include("count.urls")),
+    path("variance/", include("variance.urls")),
     # path("captures/", include("captures.urls")),
     # path("five-day/", include("five_day.urls")),
     # path("follow-up/", include("follow_up.urls")),
