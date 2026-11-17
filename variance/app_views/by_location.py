@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.db.models.aggregates import Count
 from django.db.models.functions import Abs
 
@@ -36,71 +38,48 @@ def variance_by_location(request):
     context["selected_department"] = selected_department
     context["selected_type"] = selected_type
 
+    variance_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+    if selected_department:
+        variance_set = variance_set.filter(sap_location__department=selected_department)
+
     if selected_type in ("", "FII_OWNED"):
-        if not selected_department:
-            tk_variance = (
-                CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
-                .filter(sap_location__inventory_type="FII_OWNED")
-                .values("sap_location__code", "sap_location__department")
-                .annotate(
-                    total_part_count=Count("part", distinct=True),
-                    var_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
-                    net_variance=Sum("variance_value"),
-                    abs_variance=Sum(Abs("variance_value")),
-                    book_value=Sum(F("sap_quantity") * F("map_price")),
-                    net_var_percent=(1 - Abs(F("net_variance") / F("book_value"))) * 100,
-                    abs_var_percent=(1 - F("abs_variance") / F("book_value")) * 100,
-                )
+        tk_variance = (
+            variance_set.filter(sap_location__inventory_type="FII_OWNED")
+            .values("sap_location__code", "sap_location__department")
+            .annotate(
+                total_part_count=Count("part", distinct=True),
+                var_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
+                net_variance=Sum("variance_value"),
+                abs_variance=Sum(Abs("variance_value")),
+                book_value=Sum(F("sap_quantity") * F("map_price")),
+                net_var_percent=(1 - Abs(F("net_variance") / F("book_value"))) * 100,
+                abs_var_percent=(1 - F("abs_variance") / F("book_value")) * 100,
             )
-        else:
-            tk_variance = (
-                CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
-                .filter(sap_location__department=selected_department)
-                .filter(sap_location__inventory_type="FII_OWNED")
-                .values("sap_location__code", "sap_location__department")
-                .annotate(
-                    total_part_count=Count("part", distinct=True),
-                    var_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
-                    net_variance=Sum("variance_value"),
-                    abs_variance=Sum(Abs("variance_value")),
-                    book_value=Sum(F("sap_quantity") * F("map_price")),
-                    net_var_percent=(1 - Abs(F("net_variance") / F("book_value"))) * 100,
-                    abs_var_percent=(1 - F("abs_variance") / F("book_value")) * 100,
-                )
-            )
+        )
         context["tk_variance"] = tk_variance
 
     if selected_type in ("", "CONSIGNED"):
-        if not selected_department:
-            cs_variance = (
-                CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
-                .filter(sap_location__inventory_type="CONSIGNED")
-                .values("sap_location__code", "sap_location__department")
-                .annotate(
-                    part_count=Count("part", distinct=True),
-                    variance_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
-                    abs_count_variance=Sum(Abs("variance_quantity")),
-                )
+        cs_variance = list(
+            variance_set.filter(sap_location__inventory_type="CONSIGNED")
+            .values("sap_location__code", "sap_location__department")
+            .annotate(
+                part_count=Count("part", distinct=True),
+                variance_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
+                abs_count_variance=Sum(Abs("variance_quantity")),
             )
-        else:
-            cs_variance = (
-                CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
-                .filter(sap_location__department=selected_department)
-                .filter(sap_location__inventory_type="CONSIGNED")
-                .values("sap_location__code", "sap_location__department")
-                .annotate(
-                    part_count=Count("part", distinct=True),
-                    variance_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
-                    abs_count_variance=Sum(Abs("variance_quantity")),
-                )
+        )
+        accuracy_totals = defaultdict(int)
+        location_codes = [item["sap_location__code"] for item in cs_variance]
+        if location_codes:
+            accuracy_rows = (
+                CycleVariance.objects.filter(cycle=active_cycle, plant=plant, sap_location__code__in=location_codes)
+                .select_related("sap_location")
+                .only("sap_location__code", "sap_quantity", "count_quantity")
             )
-
+            for variance in accuracy_rows.iterator():
+                accuracy_totals[variance.sap_location.code] += variance.qty_accuracy
         for item in cs_variance:
-            curr_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant, sap_location__code=item["sap_location__code"])
-            curr_total_acc = 0
-            for curr_cs in curr_set:
-                curr_total_acc += curr_cs.qty_accuracy
-            item["acc_avg"] = curr_total_acc / item["part_count"]
+            item["acc_avg"] = accuracy_totals[item["sap_location__code"]] / item["part_count"]
 
         context["cs_variance"] = cs_variance
 
