@@ -26,10 +26,10 @@ def variance_by_part(request):
     active_cycle = context["cycle_ref"]
     if not active_cycle:
         context["is_closed"] = True
-        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
+        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-opened_at").first()
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")
-            return redirect("core:home")
+            return render(request, "variance/by_part.html", context)
 
     can_manage, msg = check_permission(curr_user, plant, PERMISSION, True)
     context["can_manage"] = can_manage
@@ -79,16 +79,20 @@ def add_comment(request):
         return redirect("core:home")
 
     active_cycle = context["cycle_ref"]
-    if not active_cycle:
-        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
-        if not active_cycle:
-            messages.error(request, "No active or closed cycle found for the plant.")
-            return redirect("core:home")
 
     post_data = request.POST
     variance_id = post_data.get("variance_id")
     comment = post_data.get("comment", "").strip()
     variance = CycleVariance.objects.filter(id=variance_id).first()
+
+    if not active_cycle:
+        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-opened_at").first()
+        if not active_cycle:
+            messages.error(request, "No active or closed cycle found for the plant.")
+            return redirect(
+                f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}"
+            )
+
     if not variance:
         messages.error(request, "Variance not found.")
         return redirect("variance:variance_by_part")
@@ -118,7 +122,7 @@ def add_decision(request):
     active_cycle = context["cycle_ref"]
     if not active_cycle:
         context["is_closed"] = True
-        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
+        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-opened_at").first()
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")
             return redirect("core:home")

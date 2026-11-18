@@ -26,11 +26,12 @@ def pending_station(request):
     active_cycle = context["cycle_ref"]
     if not active_cycle:
         return render(request, "count/pending.html", context)
-    if is_global_manager(curr_user) or is_plant_manager(curr_user, plant):
-        count_ex_set = CountIntakeException.objects.filter(cycle=active_cycle)
-    else:
+
+    count_ex_set = CountIntakeException.objects.filter(cycle=active_cycle)
+    if not is_global_manager(curr_user) and not is_plant_manager(curr_user, plant):
         my_sap_list = my_sap_loc(curr_user, plant)
-        count_ex_set = CountIntakeException.objects.filter(cycle=active_cycle, sap_location__code__in=my_sap_list)
+        count_ex_set = count_ex_set.filter(sap_location__code__in=my_sap_list)
+
     may_review, msg = check_permission(curr_user, plant, PERMISSION, True)
     context["status_choices"] = SysSet().get_val("COUNT_EXCEPTION_STATUS")
     context["may_review"] = may_review

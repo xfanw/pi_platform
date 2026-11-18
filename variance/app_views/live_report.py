@@ -1,3 +1,4 @@
+from access_control.app_functions import my_sap_loc
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from django.db.models import F
@@ -26,10 +27,10 @@ def variance_live_report(request):
     active_cycle = context["cycle_ref"]
     if not active_cycle:
         context["is_closed"] = True
-        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
+        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-opened_at").first()
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")
-            return redirect("core:home")
+            return render(request, "variance/live_report.html", context)
 
     can_manage, msg = check_permission(curr_user, plant, PERMISSION, True)
     context["can_decide"] = can_manage
@@ -76,7 +77,7 @@ def variance_live_report(request):
         curr_var_set = curr_var_set.filter(sap_location__inventory_type__icontains=selected_type)
         context["selected_type"] = selected_type
     if show_var_only != "all":
-        curr_var_set = curr_var_set.exclude(sap_quantity=F("count_quantity"))
+        curr_var_set = curr_var_set.exclude(variance_quantity=0)
         context["show_all"] = False
     else:
         context["show_all"] = True
@@ -112,3 +113,43 @@ def variance_live_report(request):
     #     )
     # context["review_rows"] = review_rows
     return render(request, "variance/live_report.html", context)
+
+
+# json response for getting comments
+def get_comment(request):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        return json_error("No Plant is available in your approved scope.")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION)
+    if not can_act:
+        return json_error(mark_safe(f"You do NOT have permission to view variance by part. {msg}"))
+
+    active_cycle = context["cycle_ref"]
+    if not active_cycle:
+        context["is_closed"] = True
+        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-opened_at").first()
+        if not active_cycle:
+            return json_error("No active or closed cycle found for the plant.")
+
+    can_manage, msg = check_permission(curr_user, plant, PERMISSION, True)
+    context["can_decide"] = can_manage
+    part_number = request.GET.get("part_number")
+    if not part_number:
+        return json_error("Part number is required.")
+
+    var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant, part__part_number=part_number)
+    my_sap_list = my_sap_loc(curr_user, plant)
+    context["var_sap_code"] = list(var_set.exclude(variance_quantity=0).values_list("sap_location__code", flat=True).distinct())
+    review_rows = []
+    for sap_code in context["var_sap_code"]:
+        review_rows.append(
+            {
+                "variance": var_set.filter(sap_location__code=sap_code).first(),
+                "comments": var_set.filter(sap_location__code=sap_code).first().comments.order_by("created_at"),
+                "resolution": var_set.filter(sap_location__code=sap_code).first().resolutions.first(),
+            }
+        )
+    context["review_rows"] = review_rows

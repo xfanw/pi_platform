@@ -30,10 +30,10 @@ def variance_by_location(request):
     active_cycle = context["cycle_ref"]
     if not active_cycle:
         context["is_closed"] = True
-        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
+        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-opened_at").first()
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")
-            return redirect("core:home")
+            return render(request, "variance/by_location.html", context)
     post_data = request.GET
     selected_department = post_data.get("department", "")
     selected_type = post_data.get("inventory_type", "")

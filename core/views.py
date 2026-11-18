@@ -51,10 +51,10 @@ def home(request):
 
     active_cycle = context["cycle_ref"]
     if not active_cycle:
-        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
+        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-opened_at").first()
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")
-            return redirect("core:home")
+            return render(request, "core/home.html", context)
 
     curr_var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
     context.update(get_live_var_context(curr_var_set))
