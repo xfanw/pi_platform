@@ -25,6 +25,7 @@ def variance_by_part(request):
 
     active_cycle = context["cycle_ref"]
     if not active_cycle:
+        context["is_closed"] = True
         active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")
@@ -116,6 +117,7 @@ def add_decision(request):
 
     active_cycle = context["cycle_ref"]
     if not active_cycle:
+        context["is_closed"] = True
         active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")

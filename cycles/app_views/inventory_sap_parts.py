@@ -7,7 +7,7 @@ from core.context_processors import get_basic_info
 from core.excel_file_handler.inventory_sap_part import sap_part_batch_upload, sap_part_batch_validate, sap_part_excel_bytes
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import BookInventoryLine, PartMaster, TempSAPPartDetail, TempSAPPartMain
-from variance.app_functions import create_variance, update_variance_sap
+from variance.app_functions.variance import create_variance, update_variance_sap
 from variance.models import CycleVariance
 
 PERMISSION = "Book Inventary.SAP Inventary"

@@ -5,7 +5,7 @@ from count.models import CountIntakeException, CountRecord, CycleTagDetail
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PartMaster
 
-from variance.app_functions import delete_variance_count, update_variance_count
+from variance.app_functions.variance import delete_variance_count, update_variance_count
 
 PERMISSION = "Setting.Count.Tag Key-In"
 

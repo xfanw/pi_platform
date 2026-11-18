@@ -9,8 +9,7 @@
   <input name="part_number" value="{{ part_number }}" placeholder="Enter exact P/N">
   </div>
   <button class="btn btn-sm btn-primary" type="submit">Open P/N</button>
-  {% comment %} {% if part %}<a class="btn ghost" href="{% url 'portal:variance-report' %}?search={{ part.part_number|urlencode }}">Back to Report</a>{% endif %} {% endcomment %}
-  {% if part %}<a class="btn btn-sm btn-outline-primary" href="{% url 'core:home' %}?search={{ part.part_number|urlencode }}">Back to Report</a>{% endif %}
+  {% if part %}<a class="btn btn-sm btn-outline-primary" href="{% url 'variance:variance_live_report' %}?search={{ part.part_number|urlencode }}">Back to Report</a>{% endif %}
   </form>
 </section>
 
@@ -54,7 +53,6 @@
 <section class="card variance-review-card">
   <div class="table-section-head"><div><h2>Review by SAP Location</h2>
   <span class="mut">Choose one non-zero variance location to view comments or record the one-time PI-day decision.</span>
-  {% comment %} </div><a class="btn ghost" href="{% url 'portal:post-batches' %}">Post Batches</a></div> {% endcomment %}
   </div><button class="btn btn-sm btn-danger" onclick="show_under_developing()">Post Batches</button></div>
   {% if review_rows %}
   <div class="variance-location-picker pn-location-picker"><label for="pnVarianceLocation">SAP Location</label>
@@ -93,20 +91,18 @@
         {% if can_manage %}
         <form method="post" action="{% url 'variance:add_comment' %}" class="variance-comment-form">
         {% csrf_token %}
-        {% comment %} <form method="post" action="{% url 'portal:variance-comment' %}" class="variance-comment-form"> {% endcomment %}
           <input type="hidden" name="variance_id" value="{{ row.variance.id }}">
           {% comment %} <input type="hidden" name="submission_key" value="{{ row.comment_submission_key }}"> {% endcomment %}
           {% comment %} <input type="hidden" name="next" value="{{ request.get_full_path }}"> {% endcomment %}
           <label>New comment</label>
           <div>
             <input name="comment" maxlength="2000" required placeholder="Add evidence, explanation or follow-up">
-            <button type="submit" class="btn btn-sm btn-primary">Add Comment</button>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Add Comment</button>
           </div>
         </form>
         {% endif %}
         {% if can_manage %}
         <form method="post" action="{% url 'variance:add_decision' %}" class="variance-decision-form">
-        {% comment %} <form method="post" action="{% url 'portal:variance-decision' %}" class="variance-decision-form"> {% endcomment %}
           {% csrf_token %}
           <input type="hidden" name="variance_id" value="{{ row.variance.id }}">
           {% comment %} <input type="hidden" name="sap_location_id" value="{{ row.variance.sap_location_id }}">

@@ -4,7 +4,7 @@ from core.context_processors import get_basic_info
 from count.models import CountIntakeException, CountRecord, CycleTagDetail
 from cycles.app_models.inventory_models import PartMaster
 from site_setting.system_setting.sys_settings import SysSet
-from variance.app_functions import update_variance_count
+from variance.app_functions.variance import update_variance_count
 
 PERMISSION = "Count.Pending Station"
 

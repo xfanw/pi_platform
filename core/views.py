@@ -6,8 +6,12 @@ from django.shortcuts import redirect, render
 
 from core.context_processors import get_basic_info
 from core.init_functions.db_init import *
+from cycles.app_models.cycle_models import PICycle
 from site_setting.models import Plant
 from django.contrib.auth import logout
+
+from variance.app_functions.report import get_live_var_context
+from variance.models import CycleVariance
 
 
 def init_db(request):
@@ -39,7 +43,21 @@ def signup(request):
 
 @login_required
 def home(request):
+    curr_user = request.user
     context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        return render(request, "core/home.html", context)
+
+    active_cycle = context["cycle_ref"]
+    if not active_cycle:
+        active_cycle = PICycle.objects.filter(plant=plant, status="CLOSED").order_by("-start_date").first()
+        if not active_cycle:
+            messages.error(request, "No active or closed cycle found for the plant.")
+            return redirect("core:home")
+
+    curr_var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+    context.update(get_live_var_context(curr_var_set))
     return render(request, "core/home.html", context)
     plant = _selected_plant(request, required=False)
     if plant is None:

@@ -126,7 +126,7 @@
     {% if "Variance" in page_access_group %}
     <div class="sec">Variance</div>
     <div class="nav-items">
-      {% if "Variance.Live Variance Report" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'variance-report' %}on{% endif %}">Live Variance Report</a>{% endif %}
+      {% if "Variance.Live Variance Report" in page_access_list %}<a href="{% url 'variance:variance_live_report' %}" class="{% if request.resolver_match.url_name == 'variance_live_report' %}on{% endif %}">Live Variance Report</a>{% endif %}
       {% if "Variance.Variance by PN" in page_access_list %}<a href="{% url 'variance:variance_by_part' %}" class="{% if request.resolver_match.url_name == 'variance_by_part' %}on{% endif %}">Variance by PN</a>{% endif %}
       {% if "Variance.Variance by Location" in page_access_list %}<a href="{% url 'variance:variance_by_location' %}" class="{% if request.resolver_match.url_name == 'variance_by_location' %}on{% endif %}">Variance by Location</a>{% endif %}
       {% if "Variance.Post Batches" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'post-batches' or request.resolver_match.url_name == 'post-batch-detail' %}on{% endif %}">Post Batches</a>{% endif %}

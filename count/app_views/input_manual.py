@@ -8,7 +8,7 @@ from cycles.models import (
     CycleSAPLocation,
     CycleSubLocation,
 )
-from variance.app_functions import delete_variance_count, update_variance_count, update_variance_count, update_variance_count
+from variance.app_functions.variance import delete_variance_count, update_variance_count
 
 PERMISSION = "Count.Manual Key-In"
 
