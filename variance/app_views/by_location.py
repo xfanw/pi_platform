@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from django.db.models import Case, DecimalField, Value, When
 from django.db.models.aggregates import Count
 from django.db.models.functions import Abs
 
@@ -53,8 +54,19 @@ def variance_by_location(request):
                 net_variance=Sum("variance_value"),
                 abs_variance=Sum(Abs("variance_value")),
                 book_value=Sum(F("sap_quantity") * F("map_price")),
-                net_var_percent=(1 - Abs(F("net_variance") / F("book_value"))) * 100,
-                abs_var_percent=(1 - F("abs_variance") / F("book_value")) * 100,
+                count_value=Sum(F("count_quantity") * F("map_price")),
+                net_var_percent=Case(
+                    When(book_value=0, count_value=0, then=Value(100)),
+                    When(book_value=0, then=Value(0)),
+                    default=(1 - Abs(F("net_variance") / F("book_value"))) * 100,
+                    output_field=DecimalField(),
+                ),
+                abs_var_percent=Case(
+                    When(book_value=0, abs_variance=0, then=Value(100)),
+                    When(book_value=0, then=Value(0)),
+                    default=(1 - F("abs_variance") / F("book_value")) * 100,
+                    output_field=DecimalField(),
+                ),
             )
         )
         context["tk_variance"] = tk_variance
