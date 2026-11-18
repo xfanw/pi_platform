@@ -54,7 +54,7 @@
 <tr>
   <td><a href="{% url 'core:home' %}?sap_location={{ row.sap_location__code|urlencode }}&show=all"><b>{{ row.sap_location__code }}</b></a></td>
   <td>{{ row.sap_location__department }}</td>
-  <td><span class="chip {% if row.sap_location__inventory_type == 'CONSIGNED' %}corrected{% endif %}">{{ row.sap_location__inventory_type }}</span></td>
+  <td><span class="chip corrected">CS</span></td>
   <td class="num">{{ row.part_count|intcomma }}</td>
   <td class="num">{{ row.variance_part_count|intcomma }}</td>
   <td class="num">-- --</td>

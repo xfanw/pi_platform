@@ -122,7 +122,7 @@ def sap_part_create(request):
         created_by=curr_user,
         updated_by=curr_user,
     )
-    update_variance_sap(sap_inv, None)
+    update_variance_sap(sap_inv)
     messages.success(request, f"P/N {part_number} added to SAP Location {sap_location_code}.")
     return redirect("cycles:sap_part_setup")
 
