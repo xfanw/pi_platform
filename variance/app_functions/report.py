@@ -63,21 +63,46 @@ def get_part_sap_matrix(curr_var_set, tk_locations, cs_locations):
     parts = curr_var_set.values_list("part__part_number", flat=True).distinct()
     for part in parts:
         inventory_type = []
+
         tk_var_set = curr_var_set.filter(part__part_number=part, sap_location__inventory_type="FII_OWNED")
         if tk_var_set.exists():
             inventory_type.append("TK")
         tk_var_qty = tk_var_set.aggregate(var_qty=Sum("variance_quantity"))["var_qty"] or 0
         tk_var_val = tk_var_set.aggregate(var_val=Sum(F("variance_quantity") * F("map_price")))["var_val"] or 0
+
         cs_var_set = curr_var_set.filter(part__part_number=part, sap_location__inventory_type="CONSIGNED")
         if cs_var_set.exists():
             inventory_type.append("CS")
         cs_var_qty = cs_var_set.aggregate(var_qty=Sum("variance_quantity"))["var_qty"] or 0
         cs_abs_qty = cs_var_set.aggregate(abs_qty=Sum(Abs("variance_quantity")))["abs_qty"] or 0
         cs_book_qty = cs_var_set.aggregate(book_qty=Sum("sap_quantity"))["book_qty"] or 0
+
+        resolution_class = "review"
+        if cs_abs_qty == 0 and cs_var_qty == 0:
+            resolution_status = "Settled"
+            resolution_class = "settled"
+        else:
+            resolution_status = set(curr_var_set.filter(part__part_number=part).values_list("resolutions__status", flat=True))
+            resolution_status.discard(None)
+            if len(resolution_status) > 1:
+                resolution_status = "Partially Resolved"
+            else:
+                if "To Post" in resolution_status:
+                    resolution_class = "to-post"
+                elif "Not Post" in resolution_status:
+                    resolution_class = "not-post"
+                elif "Posted" in resolution_status:
+                    resolution_status = "Fully Posted"
+                    resolution_class = "posted"
+                else:
+                    resolution_status = "Review Needed"
+
         lines.append(
             {
                 "part": PartMaster.objects.filter(part_number=part).first(),
                 "inventory_type": "/".join(inventory_type) if inventory_type else "-- --",
+                "resolution_status": resolution_status,
+                "resolution_class": resolution_class,
                 "tk_cells": [
                     (
                         part_sap_matrix.get((part, tk_loc["code"])).variance_quantity

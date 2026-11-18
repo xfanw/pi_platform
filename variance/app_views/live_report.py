@@ -1,9 +1,10 @@
-from access_control.app_functions import my_sap_loc
+from access_control.app_functions import is_global_manager, is_plant_manager, my_sap_loc
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from django.db.models import F
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PICycle
+from site_setting.models import SAPLocation
 from variance.app_functions.report import get_live_var_context, get_part_sap_matrix
 from variance.models import CycleVariance
 
@@ -101,17 +102,6 @@ def variance_live_report(request):
 
     context.update(get_part_sap_matrix(curr_var_set, tk_locations, cs_locations))
 
-    # review_rows = []
-    # for sap_code in context["var_sap_code"]:
-    #     review_rows.append(
-    #         {
-    #             "sap_location": SAPLocation.objects.filter(plant=plant, code=sap_code).first(),
-    #             "variance": var_set.filter(sap_location__code=sap_code).first(),
-    #             "comments": var_set.filter(sap_location__code=sap_code).first().comments.order_by("created_at"),
-    #             "resolution": var_set.filter(sap_location__code=sap_code).first().resolutions.first(),
-    #         }
-    #     )
-    # context["review_rows"] = review_rows
     return render(request, "variance/live_report.html", context)
 
 
@@ -141,15 +131,44 @@ def get_comment(request):
         return json_error("Part number is required.")
 
     var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant, part__part_number=part_number)
-    my_sap_list = my_sap_loc(curr_user, plant)
-    context["var_sap_code"] = list(var_set.exclude(variance_quantity=0).values_list("sap_location__code", flat=True).distinct())
+    if not is_global_manager(curr_user) and not is_plant_manager(curr_user, plant):
+        my_sap_list = my_sap_loc(curr_user, plant)
+        var_set = var_set.filter(sap_location__code__in=my_sap_list)
+
+    var_sap_code = list(var_set.exclude(variance_quantity=0).values_list("sap_location__code", flat=True).distinct())
+    if not var_sap_code:
+        return json_error("No variance found for the given part number in your scope.")
+
+    json_context = {}
+    json_context["var_sap_code"] = var_sap_code
     review_rows = []
-    for sap_code in context["var_sap_code"]:
+    for sap_code in var_sap_code:
+        curr_sap = SAPLocation.objects.filter(code=sap_code).first()
+        curr_var = var_set.filter(sap_location__code=sap_code).first()
+        curr_res = curr_var.resolutions.first()
+        curr_comments = curr_var.comments.order_by("created_at").values("created_by__username", "body", "created_at")
+
         review_rows.append(
             {
-                "variance": var_set.filter(sap_location__code=sap_code).first(),
-                "comments": var_set.filter(sap_location__code=sap_code).first().comments.order_by("created_at"),
-                "resolution": var_set.filter(sap_location__code=sap_code).first().resolutions.first(),
+                "sap_code": sap_code,
+                "sap_department": curr_sap.department if curr_sap else "",
+                "sap_inventory": curr_sap.inventory_type if curr_sap else "",
+                "book_count": float(curr_var.sap_quantity),
+                "count_value": float(curr_var.count_quantity),
+                "variance_quantity": float(curr_var.variance_quantity),
+                "variance_value": float(curr_var.variance_value),
+                "status": curr_res.status if curr_res else "Needs Review",
+                "comments": [
+                    {"created_by": com["created_by__username"], "body": com["body"], "created_at": com["created_at"]}
+                    for com in curr_comments
+                ],
+                "resolution": {
+                    "reason": curr_res.reason if curr_res and curr_res.reason else curr_res.status if curr_res else "",
+                    "decided_at": curr_res.decided_at.strftime("%Y-%m-%d %H:%M") if curr_res and curr_res.decided_at else "",
+                    "decided_by": curr_res.decided_by.username if curr_res and curr_res.decided_by else "",
+                    "sap_document_number": curr_res.sap_document_number if curr_res else "",
+                },
             }
         )
-    context["review_rows"] = review_rows
+    json_context["review_rows"] = review_rows
+    return json_success("", **json_context)

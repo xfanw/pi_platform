@@ -1,5 +1,6 @@
 {% extends "core/base.html" %}
 {% load humanize %}
+{% load static %}
 {% block title %}Live Variance Report | PI Platform{% endblock %}
 {% block body %}
 <div class="page-heading"><div><h1>Live Variance Report</h1><p class="page-sub">Live variance compares Count Results with SAP Book Inventory. Audit corrections change this report only after approval and application.</p></div>
@@ -142,7 +143,9 @@
       {% endfor %}
       <td class="num total-col cs-total {% if row.cs_var_qty < 0 %}neg{% elif row.cs_var_qty > 0 %}pos{% endif %}">{{ row.cs_var_qty|floatformat:-4 }}</td>
       <td class="num total-col cs-total">{{ row.cs_abs_qty|floatformat:-4 }}</td>
-      <td class="num total-col cs-total">{% if row.cs_accuracy is not None %}{{ row.cs_accuracy|floatformat:1 }}%{% else %}—{% endif %}</td><td><a class="resolution-chip {{ row.resolution_class }}" href="{% url 'variance:variance_by_part' %}?pn={{ row.part.part_number|urlencode }}">{{ row.resolution_label }}</a></td><td class="comment-col"><button type="button" class="variance-comment-bubble" data-comment-dialog="varianceComments{{ row.part_id }}" aria-label="View comments for {{ row.part.part_number }}" title="View comments">💬</button></td>
+      <td class="num total-col cs-total">{% if row.cs_accuracy is not None %}{{ row.cs_accuracy|floatformat:1 }}%{% else %}—{% endif %}</td>
+      <td><a class="resolution-chip {{ row.resolution_class }}" href="{% url 'variance:variance_by_part' %}?part_number={{ row.part.part_number|urlencode }}">{{ row.resolution_status }}</a></td>
+      <td class="comment-col"><button type="button" class="variance-comment-bubble" title="View comments" onclick='show_comments("{{ row.part.part_number }}")'>💬</button></td>
     </tr>
     {% if row.previous_pi_history %}
     <tr class="variance-history-row" id="varianceHistory{{ row.part_id }}" hidden>
@@ -276,4 +279,6 @@ $(function () {
     $button.find('span').text(willOpen ? '▾' : '▸');
   });
 });
-</script>{% endblock %}
+</script>
+<script src="{% static 'variance/live_report.js' %}"></script>
+{% endblock %}

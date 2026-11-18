@@ -44,7 +44,10 @@ def update_variance_sap(sap_ref):
         sap_qty = sap_ref.quantity if sap_ref else 0
         var_ref.sap_quantity = sap_qty
         var_ref.variance_quantity = (count_sum or 0) - sap_qty
-        var_ref.variance_value = ((count_sum or 0) - sap_qty) * var_ref.map_price
+        if sap_ref.sap_inventory == "CS":
+            var_ref.variance_value = 0
+        else:
+            var_ref.variance_value = ((count_sum or 0) - sap_qty) * var_ref.map_price
         var_ref.save()
     else:
         create_variance(sap_ref, None)
