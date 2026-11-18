@@ -52,8 +52,9 @@
 
 <section class="card variance-review-card">
   <div class="table-section-head"><div><h2>Review by SAP Location</h2>
-  <span class="mut">Choose one non-zero variance location to view comments or record the one-time PI-day decision.</span>
-  </div><button class="btn btn-sm btn-danger" onclick="show_under_developing()">Post Batches</button></div>
+  <span class="mut">Choose one non-zero variance location to view comments or record the one-time PI-day decision.</span></div>
+  {% comment %} <button class="btn btn-sm btn-danger" onclick="show_under_developing()">Post Batches</button> {% endcomment %}
+  </div>
   {% if review_rows %}
   <div class="variance-location-picker pn-location-picker"><label for="pnVarianceLocation">SAP Location</label>
   <select id="pnVarianceLocation" class="variance-location-select">
