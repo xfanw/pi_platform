@@ -1,7 +1,8 @@
 from access_control.app_functions import is_global_manager, is_plant_manager, my_sap_loc
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
-from django.db.models import F
+from django.db import transaction
+from django.db.models import Exists, F, OuterRef, Subquery
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PICycle
 from site_setting.models import SAPLocation
@@ -214,57 +215,70 @@ def post_batch_create(request):
         messages.error(request, f"A post batch with name '{batch_name}' already exists.")
         return redirect("variance:variance_live_report")
 
-    var_set = (
-        CycleVariance.objects.filter(
+    with transaction.atomic():
+        var_set = (
+            CycleVariance.objects.filter(
+                cycle=active_cycle,
+                plant=plant,
+                part__part_number__in=part_numbers,
+            )
+            .exclude(variance_quantity=0)
+            .exclude(Q(status="Posted") | Q(status="Not Post"))
+        )
+        variances = list(
+            var_set.select_related("part", "sap_location").annotate(
+                has_included_batch=Exists(PostBatchLine.objects.filter(variance_id=OuterRef("pk"), is_included=True)),
+                first_resolution_id=Subquery(
+                    VarianceResolution.objects.filter(variance_id=OuterRef("pk")).order_by("pk").values("pk")[:1]
+                ),
+            )
+        )
+
+        for var in variances:
+            if var.has_included_batch:
+                messages.error(
+                    request,
+                    f"Variance for part '{var.part.part_number}' in SAP {var.sap_location.code} already exists in a post batch.",
+                )
+                return redirect("variance:variance_live_report")
+
+        post_batch_ref = PostBatch.objects.create(
             cycle=active_cycle,
-            plant=plant,
-            part__part_number__in=part_numbers,
+            name=batch_name,
+            note=batch_note,
+            created_by=curr_user,
         )
-        .exclude(variance_quantity=0)
-        .exclude(Q(status="Posted") | Q(status="Not Post"))
-    )
+        missing_variances = [var for var in variances if var.first_resolution_id is None]
+        if missing_variances:
+            VarianceResolution.objects.bulk_create(
+                [VarianceResolution(variance=var, reason=reason, status="To Post", created_by=curr_user) for var in missing_variances]
+            )
+            resolution_ids = dict(
+                VarianceResolution.objects.filter(variance__in=missing_variances).order_by("-pk").values_list("variance_id", "pk")
+            )
+            for var in missing_variances:
+                var.first_resolution_id = resolution_ids[var.pk]
 
-    for var in var_set:
-        if PostBatchLine.objects.filter(variance=var).exists():
-            messages.error(
-                request, f"Variance for part '{var.part.part_number}' in SAP {var.sap_location.code} already exists in a post batch."
-            )
-            return redirect("variance:variance_live_report")
-
-    post_batch_ref = PostBatch.objects.create(
-        cycle=active_cycle,
-        name=batch_name,
-        note=batch_note,
-        created_by=curr_user,
-    )
-    post_lines = []
-    for var in var_set:
-        if not var.resolutions.exists():
-            VarianceResolution.objects.create(
-                variance=var,
-                reason=reason,
-                status="To Post",
-                created_by=curr_user,
-            )
-        post_lines.append(
-            PostBatchLine(
-                variance=var,
-                batch=post_batch_ref,
-                resolution=var.resolutions.first(),
-                part_number_snapshot=var.part.part_number,
-                variance_quantity_snapshot=var.variance_quantity,
-                variance_value_snapshot=var.variance_value,
-                movement_type="901" if var.variance_quantity > 0 else "902",
-            )
+        PostBatchLine.objects.bulk_create(
+            [
+                PostBatchLine(
+                    variance_id=var.pk,
+                    batch=post_batch_ref,
+                    resolution_id=var.first_resolution_id,
+                    part_number_snapshot=var.part.part_number,
+                    variance_quantity_snapshot=var.variance_quantity,
+                    variance_value_snapshot=var.variance_value,
+                    movement_type="901" if var.variance_quantity > 0 else "902",
+                )
+                for var in variances
+            ]
         )
 
-    PostBatchLine.objects.bulk_create(post_lines)
+        VarianceResolution.objects.filter(variance__in=var_set).filter(
+            Q(reason="") | Q(reason__isnull=True),
+        ).update(reason=reason)
 
-    VarianceResolution.objects.filter(variance__in=var_set).filter(
-        Q(reason="") | Q(reason__isnull=True),
-    ).update(reason=reason)
-
-    VarianceResolution.objects.filter(variance__in=var_set).update(status="To Post")
-    var_set.update(status="To Post")
+        VarianceResolution.objects.filter(variance__in=var_set).update(status="To Post")
+        var_set.update(status="To Post")
     messages.success(request, f"Post batch {batch_name} created successfully.")
     return redirect("variance:variance_live_report")
