@@ -125,8 +125,6 @@ def part_update(request, part_id):
         return redirect("core:home")
 
     post_data = request.POST
-    pprint(post_data)
-    print(part_id)
     description = post_data.get("description", "").strip()
     business_unit = post_data.get("business_unit", "").strip()
     price = post_data.get("price", "0")

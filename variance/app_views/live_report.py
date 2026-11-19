@@ -17,7 +17,7 @@ def variance_live_report(request):
     context = get_basic_info(request)
     plant = context["plant_ref"]
     if not plant:
-        messages.error(request, "No Plant is available in your approved scope.")
+        messages.error(request, "No Plant is available in your a`ppr`oved scope.")
         return redirect("core:home")
 
     can_act, msg = check_permission(curr_user, plant, PERMISSION)
@@ -175,5 +175,4 @@ def get_comment(request):
             }
         )
     json_context["review_rows"] = review_rows
-    pprint(json_context)
     return json_success("", **json_context)
