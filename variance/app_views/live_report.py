@@ -227,7 +227,9 @@ def post_batch_create(request):
         )
         variances = list(
             var_set.select_related("part", "sap_location").annotate(
-                has_included_batch=Exists(PostBatchLine.objects.filter(variance_id=OuterRef("pk"), is_included=True)),
+                has_included_batch=Exists(
+                    PostBatchLine.objects.exclude(batch__status="Cancelled").filter(variance_id=OuterRef("pk"), is_included=True)
+                ),
                 first_resolution_id=Subquery(
                     VarianceResolution.objects.filter(variance_id=OuterRef("pk")).order_by("pk").values("pk")[:1]
                 ),

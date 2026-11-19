@@ -42,12 +42,17 @@ def update_variance_sap(sap_ref):
             or 0
         )
         sap_qty = sap_ref.quantity if sap_ref else 0
+        var_qty = count_sum - sap_qty
         var_ref.sap_quantity = sap_qty
-        var_ref.variance_quantity = (count_sum or 0) - sap_qty
+        var_ref.variance_quantity = var_qty
         if sap_ref.sap_inventory == "CS":
             var_ref.variance_value = 0
         else:
-            var_ref.variance_value = ((count_sum or 0) - sap_qty) * var_ref.map_price
+            var_ref.variance_value = var_qty * var_ref.map_price
+        if var_qty == 0:
+            var_ref.status = "Settled"
+        else:
+            var_ref.status = "Needs Review"
         var_ref.save()
     else:
         create_variance(sap_ref, None)
@@ -69,8 +74,17 @@ def update_variance_count(count_ref):
             or 0
         )
         var_ref.count_quantity = count_sum
-        var_ref.variance_quantity = count_sum - (var_ref.sap_quantity or 0)
-        var_ref.variance_value = (count_sum - (var_ref.sap_quantity or 0)) * var_ref.map_price
+        var_qty = count_sum - (var_ref.sap_quantity or 0)
+        var_ref.variance_quantity = var_qty
+        if count_ref.sap_location.inventory_type == "CS":
+            var_ref.variance_value = 0
+        else:
+            var_ref.variance_value = var_qty * var_ref.map_price
+
+        if var_qty == 0:
+            var_ref.status = "Settled"
+        else:
+            var_ref.status = "Needs Review"
         var_ref.save()
     else:
         create_variance(None, count_ref)
@@ -92,8 +106,16 @@ def delete_variance_count(count_ref):
             or 0
         )
         var_ref.count_quantity = count_sum
-        var_ref.variance_quantity = count_sum - (var_ref.sap_quantity or 0)
-        var_ref.variance_value = (count_sum - (var_ref.sap_quantity or 0)) * var_ref.map_price
+        var_qty = count_sum - (var_ref.sap_quantity or 0)
+        var_ref.variance_quantity = var_qty
+        if count_ref.sap_location.inventory_type == "CS":
+            var_ref.variance_value = 0
+        else:
+            var_ref.variance_value = var_qty * var_ref.map_price
+        if var_qty == 0:
+            var_ref.status = "Settled"
+        else:
+            var_ref.status = "Needs Review"
         var_ref.save()
     else:
         create_variance(None, count_ref)

@@ -82,7 +82,9 @@ def get_part_sap_matrix(curr_var_set, tk_locations, cs_locations):
             resolution_status = "Settled"
             resolution_class = "settled"
         else:
-            resolution_status = set(curr_var_set.filter(part__part_number=part).values_list("resolutions__status", flat=True))
+            resolution_status = set(
+                curr_var_set.filter(part__part_number=part).exclude(status="Settled").values_list("status", flat=True)
+            )
             resolution_status.discard(None)
             if len(resolution_status) > 1:
                 if "To Post" in resolution_status:
