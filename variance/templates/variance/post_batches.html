@@ -1,0 +1,46 @@
+{% extends "core/base.html" %}
+{% block title %}Post Batches | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading"><div><h1>Post Batches</h1>
+<p class="page-sub">Variance Approvers create Draft Batches from selected P/Ns on the Live Variance Report. CM reviews each Draft and records the completed SAP posting.</p></div>
+<a class="btn btn-sm btn-outline-primary" href="{% url 'variance:variance_live_report' %}">Back to Live Variance Report</a></div>
+
+<div class="cards post-batch-kpis">
+  <div class="kpi amber"><div class="lbl">Open Batches</div><div class="val">{{ open_batches|length }}</div><div class="mut">Drafts awaiting CM review</div></div>
+  <div class="kpi"><div class="lbl">PI Status</div><div class="val small">{{ cycle_ref.status }}</div><div class="mut">{{ cycle_ref.name }}</div></div>
+</div>
+
+<section class="card">
+  <div class="table-section-head"><div><h2>Open Batches</h2><span class="mut">Draft Batches awaiting CM review and SAP confirmation.</span></div></div>
+  <div class="scroll"><table class="post-batch-table"><thead><tr><th>Batch</th><th>Status</th><th class="num">Lines</th><th>Created</th><th>SAP Document</th><th>Posting Date</th><th>Confirmed By</th><th></th></tr></thead><tbody>
+  {% for batch in open_batches %}
+  <tr>
+    <td><b>{{ batch.name }}</b>{% if batch.note %}<small>{{ batch.note }}</small>{% endif %}</td>
+    <td><span class="batch-status {{ batch.status|lower }}">{{ batch.status }}</span></td>
+    <td class="num">{{ batch.lines|length }}</td>  
+    <td>{{ batch.created_at|date:'Y-m-d H:i' }}<small>{{ batch.created_by.username|default:'system' }}</small></td>
+    <td class="mono">—</td><td>—</td><td>—</td>
+    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'variance:post_batches_detail' batch.id %}">{% if can_confirm %}Review{% else %}View{% endif %}</a></td>
+  </tr>
+  {% empty %}<tr><td colspan="8" class="mut">No open Draft Batches. Create one by selecting P/Ns on the Live Variance Report.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="card">
+  <div class="table-section-head"><div><h2>Batch History</h2><span class="mut">Posted and cancelled Batches in this PI Cycle.</span></div></div>
+  <div class="scroll"><table class="post-batch-table"><thead><tr><th>Batch</th><th>Status</th><th class="num">Lines</th><th>Created</th><th>SAP Document</th><th>Posting Date</th><th>Confirmed By</th><th></th></tr></thead><tbody>
+  {% for batch in batch_history %}
+  <tr>
+    <td><b>{{ batch.name }}</b>{% if batch.note %}<small>{{ batch.note }}</small>{% endif %}</td>
+    <td><span class="batch-status {{ batch.status|lower }}">{{ batch.get_status_display }}</span></td>
+    <td class="num">{{ batch.visible_lines|length }}</td>
+    <td>{{ batch.created_at|date:'Y-m-d H:i' }}<small>{{ batch.created_by.username|default:'system' }}</small></td>
+    <td class="mono">{{ batch.sap_document_number|default:'—' }}</td>
+    <td>{{ batch.posting_date|date:'Y-m-d'|default:'—' }}</td>
+    <td>{{ batch.confirmed_by.username|default:'—' }}</td>
+    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'variance:post_batches_detail' batch.id %}">View</a></td>
+  </tr>
+  {% empty %}<tr><td colspan="8" class="mut">No completed or cancelled Batches yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

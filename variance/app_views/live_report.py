@@ -6,7 +6,7 @@ from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PICycle
 from site_setting.models import SAPLocation
 from variance.app_functions.report import get_live_var_context, get_part_sap_matrix
-from variance.models import CycleVariance
+from variance.models import CycleVariance, PostBatch, PostBatchLine, VarianceResolution
 
 PERMISSION = "Variance.Live Variance Report"
 
@@ -106,6 +106,7 @@ def variance_live_report(request):
 
 
 # json response for getting comments
+@login_required
 def get_comment(request):
     curr_user = request.user
     context = get_basic_info(request)
@@ -176,3 +177,94 @@ def get_comment(request):
         )
     json_context["review_rows"] = review_rows
     return json_success("", **json_context)
+
+
+@login_required
+def post_batch_create(request):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to create post batches. {msg}"))
+        return redirect("core:home")
+
+    active_cycle = context["cycle_ref"]
+    if not active_cycle:
+        return json_error("No active cycle found for the plant.")
+    post_data = request.POST
+    batch_name = post_data.get("batch_name", "").strip()
+    batch_note = post_data.get("batch_note", "").strip()
+    reason = post_data.get("reason", "").strip()
+    part_numbers = post_data.getlist("part_number", [])
+    if not batch_name:
+        messages.error(request, "Batch name is required.")
+        return redirect("variance:variance_live_report")
+
+    if not part_numbers:
+        messages.error(request, "No part numbers selected.")
+        return redirect("variance:variance_live_report")
+
+    post_batch_ref = PostBatch.objects.filter(cycle=active_cycle, name=batch_name).first()
+    if post_batch_ref:
+        messages.error(request, f"A post batch with name '{batch_name}' already exists.")
+        return redirect("variance:variance_live_report")
+
+    var_set = (
+        CycleVariance.objects.filter(
+            cycle=active_cycle,
+            plant=plant,
+            part__part_number__in=part_numbers,
+        )
+        .exclude(variance_quantity=0)
+        .exclude(Q(status="Posted") | Q(status="Not Post"))
+    )
+
+    for var in var_set:
+        if PostBatchLine.objects.filter(variance=var).exists():
+            messages.error(
+                request, f"Variance for part '{var.part.part_number}' in SAP {var.sap_location.code} already exists in a post batch."
+            )
+            return redirect("variance:variance_live_report")
+
+    post_batch_ref = PostBatch.objects.create(
+        cycle=active_cycle,
+        name=batch_name,
+        note=batch_note,
+        created_by=curr_user,
+    )
+    post_lines = []
+    for var in var_set:
+        if not var.resolutions.exists():
+            VarianceResolution.objects.create(
+                variance=var,
+                reason=reason,
+                status="To Post",
+                created_by=curr_user,
+            )
+        post_lines.append(
+            PostBatchLine(
+                variance=var,
+                batch=post_batch_ref,
+                resolution=var.resolutions.first(),
+                part_number_snapshot=var.part.part_number,
+                variance_quantity_snapshot=var.variance_quantity,
+                variance_value_snapshot=var.variance_value,
+                movement_type="901" if var.variance_quantity > 0 else "902",
+            )
+        )
+
+    PostBatchLine.objects.bulk_create(post_lines)
+
+    VarianceResolution.objects.filter(variance__in=var_set).filter(
+        Q(reason="") | Q(reason__isnull=True),
+    ).update(reason=reason)
+
+    VarianceResolution.objects.filter(variance__in=var_set).update(status="To Post")
+    var_set.update(status="To Post")
+    messages.success(request, f"Post batch {batch_name} created successfully.")
+    return redirect("variance:variance_live_report")

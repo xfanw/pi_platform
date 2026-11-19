@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.db import models
 
 from core.models import TimeStampedModel
@@ -6,6 +5,7 @@ from core.constants import PRICE_DECIMAL_PLACES, PRICE_MAX_DIGITS, QUANTITY_DECI
 from cycles.app_models.cycle_models import PICycle
 from cycles.app_models.inventory_models import PartMaster
 from site_setting.models import Plant, SAPLocation
+from django.contrib.auth.models import User
 
 
 class CycleVariance(models.Model):
@@ -18,6 +18,9 @@ class CycleVariance(models.Model):
     variance_quantity = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
     map_price = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
     variance_value = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
+    status = models.CharField(
+        max_length=24, default="Needs Review"
+    )  # ["Needs Review", "To Post", "Not Post", "Posted", "Closed - Resolved"]
 
     class Meta:
         indexes = [
@@ -49,16 +52,14 @@ class VarianceResolution(TimeStampedModel):
     reason = models.CharField(max_length=240, blank=True)
     sap_document_number = models.CharField(max_length=80, blank=True)
     decided_at = models.DateTimeField(null=True, blank=True)
-    decided_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name="variance_resolutions_decided"
-    )
+    decided_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="variance_resolutions_decided")
 
 
 class VarianceComment(models.Model):
     variance = models.ForeignKey(CycleVariance, on_delete=models.CASCADE, related_name="comments")
     body = models.TextField(max_length=2000)
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="variance_comments")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="variance_comments")
 
 
 # class VarianceResolutionLog(models.Model):
@@ -69,7 +70,7 @@ class VarianceComment(models.Model):
 #     note = models.CharField(max_length=500, blank=True)
 #     created_at = models.DateTimeField(auto_now_add=True)
 #     created_by = models.ForeignKey(
-#         settings.AUTH_USER_MODEL,
+#         User,
 #         on_delete=models.CASCADE,
 #         related_name="variance_resolution_logs",
 #     )
@@ -92,13 +93,7 @@ class PostBatch(TimeStampedModel):
     sap_document_number = models.CharField(max_length=80, blank=True)
     posting_date = models.DateField(null=True, blank=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    confirmed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="post_batches_confirmed",
-    )
+    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="post_batches_confirmed")
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["cycle", "name"], name="uq_post_batch_cycle_name")]

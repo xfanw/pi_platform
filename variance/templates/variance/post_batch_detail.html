@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+{% block title %}{{ batch.name }} | Post Batches{% endblock %}
+{% block body %}
+<div class="page-heading"><div>
+<div class="breadcrumb"><a href="{% url 'variance:post_batches' %}">Post Batches</a> / {{ batch.name }}</div><h1>{{ batch.name }}</h1>
+<p class="page-sub">Frozen posting proposal for {{ cycle.name }}. CM reviews the Draft and records the actual SAP posting document.</p></div>
+<span class="batch-status large {{ batch.status|lower }}">{{ batch.get_status_display }}</span></div>
+
+<section class="workspace-band post-batch-heading"><div><span>Created</span><b>{{ batch.created_at|date:'Y-m-d H:i' }}</b><small>{{ batch.created_by.username|default:'system' }}</small></div><div><span>SAP Document</span><b>{{ batch.sap_document_number|default:'—' }}</b></div><div><span>Posting Date</span><b>{{ batch.posting_date|date:'Y-m-d'|default:'—' }}</b></div><div><span>Confirmed By</span><b>{{ batch.confirmed_by.username|default:'—' }}</b></div></section>
+
+{% if is_draft and can_confirm %}<form method="post" id="postBatchConfirmForm">{% csrf_token %}{% endif %}
+<section class="card post-batch-detail-card">
+  <div class="table-section-head"><div><h2>Frozen Batch Lines</h2><span class="mut">Uncheck a line to return it to Needs Review when this batch is confirmed.</span></div></div>
+  <div class="scroll"><table class="post-batch-lines"><thead><tr>{% if is_draft and can_confirm %}<th>Post</th>{% endif %}<th>P/N</th><th>SAP Location</th><th>Type</th><th>Movement</th><th class="num">MAP$</th><th class="num">Variance Qty</th><th class="num">Variance Value</th><th>Result</th></tr></thead><tbody>
+  {% for line in batch.visible_lines %}<tr class="{% if not line.is_included %}excluded-row{% endif %}">{% if is_draft and can_confirm %}<td><input type="checkbox" class="post-line-check" checked data-line-id="{{ line.line_id }}" aria-label="Include {{ line.part_number_snapshot }} at {{ line.sap_location_code_snapshot }}"><input type="checkbox" name="excluded_line_id" value="{{ line.line_id }}" class="post-line-excluded" hidden></td>{% endif %}<td><b>{{ line.part_number_snapshot }}</b></td><td><span class="chip">{{ line.sap_location_code_snapshot }}</span></td><td>{{ line.inventory_type_snapshot }}</td><td><span class="movement-chip">{{ line.movement_type }}</span></td><td class="num">${{ line.moving_average_price_snapshot|floatformat:2 }}</td><td class="num {% if line.variance_quantity_snapshot < 0 %}neg{% else %}pos{% endif %}">{{ line.variance_quantity_snapshot|floatformat:-4 }}</td><td class="num {% if line.variance_value_snapshot < 0 %}neg{% else %}pos{% endif %}">${{ line.variance_value_snapshot|floatformat:2 }}</td><td>{% if line.is_included %}Included{% else %}<span class="batch-status cancelled">Excluded</span><small>{{ line.exclusion_note }}</small>{% endif %}</td></tr>{% empty %}<tr><td colspan="9" class="mut">This batch has no lines in your approved scope.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+{% if is_draft and can_confirm %}
+<section class="card post-confirm-card">
+  <div class="search-title">CM Review &amp; SAP Confirmation</div>
+  <div class="post-confirm-grid"><div><label>SAP document number</label><input name="sap_document_number" maxlength="80" required></div><div><label>Posting date</label><input type="date" name="posting_date" required></div><div class="post-confirm-actions"><button type="submit" name="action" value="confirm">Confirm SAP Posting</button><button type="submit" name="action" value="cancel" class="btn danger-outline" formnovalidate>Cancel Draft</button></div></div>
+  <p class="mut">Confirmation changes included lines from To Post to Posted in one database transaction. Excluded lines return to Needs Review. It does not change Count Results or SAP Book Inventory.</p>
+</section>
+</form>
+{% elif is_draft %}<div class="flash warn">Draft batch · CM access is required to review and confirm the SAP document.</div>{% endif %}
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  document.querySelectorAll('.post-line-check').forEach(box => {
+    const excluded = box.parentElement.querySelector('.post-line-excluded');
+    const sync = () => { excluded.checked = !box.checked; box.closest('tr').classList.toggle('excluded-row', !box.checked); };
+    box.addEventListener('change', sync);
+    sync();
+  });
+})();
+</script>{% endblock %}

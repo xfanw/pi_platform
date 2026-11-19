@@ -65,6 +65,7 @@ def variance_by_part(request):
     return render(request, "variance/by_part.html", context)
 
 
+@login_required
 def add_comment(request):
     curr_user = request.user
     context = get_basic_info(request)
@@ -105,6 +106,7 @@ def add_comment(request):
     return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")
 
 
+@login_required
 def add_decision(request):
     curr_user = request.user
     curr_time = datetime.now().astimezone()
@@ -129,7 +131,7 @@ def add_decision(request):
 
     post_data = request.POST
     variance_id = post_data.get("variance_id")
-    decision = post_data.get("decision")
+    decision = post_data.get("decision")  # To Post / Not Post
     reason = post_data.get("reason", "").strip()
     variance = CycleVariance.objects.filter(id=variance_id).first()
     if not variance:
@@ -138,7 +140,8 @@ def add_decision(request):
     if not decision:
         messages.error(request, "Decision cannot be empty.")
         return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")
-
+    variance.status = decision
+    variance.save()
     VarianceResolution.objects.create(created_by=curr_user, variance=variance, status=decision, reason=reason)
     messages.success(request, "Decision added successfully.")
     return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")

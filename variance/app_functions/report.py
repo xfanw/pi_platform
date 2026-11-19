@@ -87,14 +87,16 @@ def get_part_sap_matrix(curr_var_set, tk_locations, cs_locations):
             if len(resolution_status) > 1:
                 if "To Post" in resolution_status:
                     resolution_status = "Mixed / Review"
-                elif "Not Post" in resolution_status:
+                elif "Not Post" in resolution_status and "Posted" in resolution_status:
                     resolution_status = "Partially Resolved"
                 else:
-                    resolution_status = "Partially Resolved"
+                    resolution_status = "Mixed / Review"
             else:
                 if "To Post" in resolution_status:
+                    resolution_status = "To Post"
                     resolution_class = "to-post"
                 elif "Not Post" in resolution_status:
+                    resolution_status = "Not Post"
                     resolution_class = "not-post"
                 elif "Posted" in resolution_status:
                     resolution_status = "Fully Posted"

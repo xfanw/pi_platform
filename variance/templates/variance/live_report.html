@@ -69,7 +69,7 @@
 
 {% if can_decide and not is_closed %}
 {% comment %} <form method="post" action="{% url 'portal:variance-submit-post' %}" id="varianceDecisionForm"> {% endcomment %}
-<form method="post" action="{% url 'core:home' %}" id="varianceDecisionForm">
+<form method="post" action="{% url 'variance:post_batch_create' %}" id="varianceDecisionForm">
   {% csrf_token %}
   <section class="card variance-action-card">
     <div class="variance-action-title"><div><span class="section-kicker">Post Review</span><b><span id="varianceSelectedCount">0</span> P/N line(s) selected</b></div></div>
@@ -105,7 +105,7 @@
     <tbody>{% for row in rows %}
     <tr>
       {% if can_decide and not is_closed %}
-      <td class="select-col"><input class="variance-row-check" type="checkbox" name="part_id" value="{{ row.part_id }}" {% if row.tk_var_qty == 0 and row.cs_var_qty == 0 %}disabled{% endif %} aria-label="Select {{ row.part.part_number }}"></td>
+      <td class="select-col"><input class="variance-row-check" type="checkbox" name="part_number" value="{{ row.part.part_number }}" {% if row.tk_var_qty == 0 and row.cs_var_qty == 0 %}disabled{% endif %} aria-label="Select {{ row.part.part_number }}"></td>
       {% endif %}
       <td class="sticky-pn"><div class="variance-pn-cell">
         <a href="{% url 'variance:variance_by_part' %}?part_number={{ row.part.part_number|urlencode }}"><b>{{ row.part.part_number }}</b></a>
@@ -177,27 +177,7 @@
 </section>
 {% if can_decide and not is_closed %}</form>{% endif %}
 
-{% for row in rows %}
-<dialog class="variance-comment-dialog" id="varianceComments{{ row.part_id }}">
-  <div class="dialog-heading"><div><span class="section-kicker">Variance Comments</span><h2>{{ row.part.part_number }}</h2><p>{{ row.part.description }}</p></div><button type="button" class="btn btn-sm btn-outline-primary dialog-close">Close</button></div>
-  <div class="scroll"><table class="comment-summary-table"><thead><tr><th>SAP Location</th><th class="num">Book Qty</th><th class="num">Count Qty</th><th class="num">Variance Qty</th><th class="num">Variance Amount</th></tr></thead><tbody>
-    {% for item in row.comment_locations %}<tr><td><b>{{ item.location.code }}</b><small>{{ item.location.department.name }}</small></td><td class="num">{{ item.line.book_quantity|floatformat:-4|intcomma }}</td><td class="num">{{ item.line.count_quantity|floatformat:-4|intcomma }}</td><td class="num {% if item.line.variance_quantity < 0 %}neg{% elif item.line.variance_quantity > 0 %}pos{% endif %}">{{ item.line.variance_quantity|floatformat:-4|intcomma }}</td><td class="num {% if item.line.variance_value < 0 %}neg{% elif item.line.variance_value > 0 %}pos{% endif %}">${{ item.line.variance_value|floatformat:2|intcomma }}</td></tr>{% empty %}<tr><td colspan="5" class="mut">No SAP-location variance rows are available.</td></tr>{% endfor %}
-  </tbody></table></div>
-  {% if row.comment_locations %}
-  <div class="variance-location-picker"><label for="varianceLocation{{ row.part_id }}">SAP Location</label><select id="varianceLocation{{ row.part_id }}" class="variance-location-select">{% for item in row.comment_locations %}<option value="{{ item.location.pk }}">{{ item.location.code }} · {{ item.location.department.name }}</option>{% endfor %}</select><small>Only SAP Locations with a non-zero Live Variance are listed.</small></div>
-  <div class="comment-location-list compact">
-    {% for item in row.comment_locations %}<section class="comment-location-block" data-location-panel="{{ item.location.pk }}" {% if not forloop.first %}hidden{% endif %}><h3>{{ item.location.code }} · Review &amp; Comments</h3>
-      <div class="variance-selected-summary"><span>Book <b>{{ item.line.book_quantity|floatformat:-4|intcomma }}</b></span><span>Count <b>{{ item.line.count_quantity|floatformat:-4|intcomma }}</b></span><span>Variance <b class="{% if item.line.variance_quantity < 0 %}neg{% elif item.line.variance_quantity > 0 %}pos{% endif %}">{{ item.line.variance_quantity|floatformat:-4|intcomma }}</b></span><span>Amount <b class="{% if item.line.variance_value < 0 %}neg{% elif item.line.variance_value > 0 %}pos{% endif %}">${{ item.line.variance_value|floatformat:2|intcomma }}</b></span><span>Status <b>{% if item.resolution %}{{ item.resolution.get_status_display }}{% else %}Needs Review{% endif %}</b></span></div>
-      <div class="comment-thread">{% for comment in item.comments %}<div class="variance-comment"><div><b>{{ comment.created_by.username }}</b><span>{{ comment.created_at|date:'Y-m-d H:i' }}</span></div><p>{{ comment.body }}</p></div>{% empty %}<p class="mut">No comments yet.</p>{% endfor %}</div>
-      {% comment %} {% if can_comment and not is_closed %}<form method="post" action="{% url 'portal:variance-comment' %}" class="variance-comment-form">{% csrf_token %}<input type="hidden" name="part_id" value="{{ row.part_id }}"><input type="hidden" name="sap_location_id" value="{{ item.location.pk }}"><input type="hidden" name="submission_key" value="{{ item.submission_key }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><label>Add optional comment for {{ item.location.code }}</label><div><input name="comment" maxlength="2000" required placeholder="Add evidence, explanation or follow-up"><button type="submit">Add Comment</button></div></form>{% endif %}
-      {% if can_decide and not is_closed %}<form method="post" action="{% url 'portal:variance-decision' %}" class="variance-decision-form compact-decision">{% csrf_token %}<input type="hidden" name="part_id" value="{{ row.part_id }}"><input type="hidden" name="sap_location_id" value="{{ item.location.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><input type="hidden" name="decision" value=""><label>PI-day decision</label>{% if item.can_decide_line %}<div><input name="reason" maxlength="240" placeholder="Optional decision reason"><button type="submit" onclick="this.form.elements.decision.value='TO_POST'">Post</button><button type="submit" class="btn danger-outline" onclick="this.form.elements.decision.value='NOT_POST'">Not Post</button></div>{% else %}<p class="mut">Decision recorded: {% if item.resolution %}{{ item.resolution.get_status_display }}{% endif %}. A Not Post line remains unresolved and stays in Live Variance.</p>{% endif %}</form>{% endif %} {% endcomment %}
-      {% if can_comment and not is_closed %}<form method="post" action="{% url 'core:home' %}" class="variance-comment-form">{% csrf_token %}<input type="hidden" name="part_id" value="{{ row.part_id }}"><input type="hidden" name="sap_location_id" value="{{ item.location.pk }}"><input type="hidden" name="submission_key" value="{{ item.submission_key }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><label>Add optional comment for {{ item.location.code }}</label><div><input name="comment" maxlength="2000" required placeholder="Add evidence, explanation or follow-up"><button type="submit">Add Comment</button></div></form>{% endif %}
-      {% if can_decide and not is_closed %}<form method="post" action="{% url 'core:home' %}" class="variance-decision-form compact-decision">{% csrf_token %}<input type="hidden" name="part_id" value="{{ row.part_id }}"><input type="hidden" name="sap_location_id" value="{{ item.location.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><input type="hidden" name="decision" value=""><label>PI-day decision</label>{% if item.can_decide_line %}<div><input name="reason" maxlength="240" placeholder="Optional decision reason"><button type="submit" onclick="this.form.elements.decision.value='TO_POST'">Post</button><button type="submit" class="btn danger-outline" onclick="this.form.elements.decision.value='NOT_POST'">Not Post</button></div>{% else %}<p class="mut">Decision recorded: {% if item.resolution %}{{ item.resolution.get_status_display }}{% endif %}. A Not Post line remains unresolved and stays in Live Variance.</p>{% endif %}</form>{% endif %}
-    </section>{% endfor %}
-  </div>
-  {% else %}<p class="mut dialog-empty">No non-zero SAP-location variance rows are available.</p>{% endif %}
-</dialog>
-{% endfor %}
+
 {% endblock %}
 {% block scripts %}<script>
 $(function () {
