@@ -67,8 +67,8 @@ function show_comments(part_number) {
                     </tbody>
                     </table>
                     `;
-                    if (resolution.decided_at) {
-                        html_text += `<div class="variance-current-reason"><b>Decision note</b><span>${escapeHtml(resolution.reason)} by ${escapeHtml(resolution.decided_by)} at ${escapeHtml(resolution.decided_at)}</span></div>`;
+                    if (resolution.created_at) {
+                        html_text += `<div class="variance-current-reason"><b>Decision note</b><span>${escapeHtml(resolution.reason)} by ${escapeHtml(resolution.created_by)} at ${escapeHtml(resolution.created_at)}</span></div>`;
                     }
 
                     html_text += `<div class="variance-thread">
@@ -76,7 +76,7 @@ function show_comments(part_number) {
                     if (Array.isArray(row.comments) && row.comments.length > 0) {
                         for (let comment of row.comments) {
                             html_text += `<div class="variance-comment">
-                      <div><span>${escapeHtml(comment.created_by)} at ${escapeHtml(comment.create_at)}</span></div>
+                      <div><span>${escapeHtml(comment.created_by)} at ${escapeHtml(comment.created_at)}</span></div>
                       <h5 class='text-start'>${escapeHtml(comment.body)}</h5>
                     </div>`;
                         }

@@ -139,8 +139,6 @@ def add_decision(request):
         messages.error(request, "Decision cannot be empty.")
         return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")
 
-    VarianceResolution.objects.create(
-        created_by=curr_user, variance=variance, status=decision, reason=reason, decided_at=curr_time, decided_by=curr_user
-    )
+    VarianceResolution.objects.create(created_by=curr_user, variance=variance, status=decision, reason=reason)
     messages.success(request, "Decision added successfully.")
     return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")

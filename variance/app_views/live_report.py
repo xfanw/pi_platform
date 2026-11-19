@@ -159,16 +159,21 @@ def get_comment(request):
                 "variance_value": float(curr_var.variance_value),
                 "status": curr_res.status if curr_res else "Needs Review",
                 "comments": [
-                    {"created_by": com["created_by__username"], "body": com["body"], "created_at": com["created_at"]}
+                    {
+                        "created_by": com["created_by__username"],
+                        "body": com["body"],
+                        "created_at": com["created_at"].strftime("%Y-%m-%d %H:%M") if com["created_at"] else "",
+                    }
                     for com in curr_comments
                 ],
                 "resolution": {
                     "reason": curr_res.reason if curr_res and curr_res.reason else curr_res.status if curr_res else "",
-                    "decided_at": curr_res.decided_at.strftime("%Y-%m-%d %H:%M") if curr_res and curr_res.decided_at else "",
-                    "decided_by": curr_res.decided_by.username if curr_res and curr_res.decided_by else "",
+                    "created_at": curr_res.created_at.strftime("%Y-%m-%d %H:%M") if curr_res and curr_res.created_at else "",
+                    "created_by": curr_res.created_by.username if curr_res and curr_res.created_by else "",
                     "sap_document_number": curr_res.sap_document_number if curr_res else "",
                 },
             }
         )
     json_context["review_rows"] = review_rows
+    pprint(json_context)
     return json_success("", **json_context)
