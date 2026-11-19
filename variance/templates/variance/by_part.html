@@ -75,7 +75,7 @@
         <div><span>SAP Document</span><b>{{ row.resolution.sap_document_number|default:'—' }}</b></div>
       </div>
 
-      {% if row.resolution %}<div class="variance-current-reason"><b>Decision note</b><span>{{ row.resolution.reason|default:row.resolution.status }} by {{ row.resolution.decided_by.username }} at {{ row.resolution.decided_at|date:'Y-m-d H:i' }}</span></div>{% endif %}
+      {% if row.resolution and row.resolution.status != 'Needs Review' %}<div class="variance-current-reason"><b>Decision note</b><span>{{ row.resolution.reason|default:row.resolution.status }} by {{ row.resolution.created_by.username }} at {{ row.resolution.created_at|date:'Y-m-d H:i' }}</span></div>{% endif %}
       
       <div class="variance-thread">
         <div class="variance-thread-title">Comment thread</div>

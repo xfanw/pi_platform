@@ -1,6 +1,6 @@
 from django.urls import path
 
-from variance.app_views.post_batches import post_batches_view, post_batch_detail
+from variance.app_views.post_batches import post_batches_view, post_batch_detail, post_batch_confirm
 from variance.app_views.live_report import post_batch_create
 from variance.app_views.by_part import add_comment, add_decision, variance_by_part
 from variance.app_views.live_report import get_comment
@@ -27,4 +27,5 @@ urlpatterns += [
 urlpatterns += [
     path("post_batches", post_batches_view, name="post_batches"),
     path("post_batches/<int:batch_id>", post_batch_detail, name="post_batches_detail"),
+    path("post_batches/<int:batch_id>/confirm", post_batch_confirm, name="post_batches_confirm"),
 ]

@@ -32,7 +32,7 @@
   {% for batch in batch_history %}
   <tr>
     <td><b>{{ batch.name }}</b>{% if batch.note %}<small>{{ batch.note }}</small>{% endif %}</td>
-    <td><span class="batch-status {{ batch.status|lower }}">{{ batch.get_status_display }}</span></td>
+    <td><span class="batch-status {{ batch.status|lower }}">{{ batch.status }}</span></td>
     <td class="num">{{ batch.visible_lines|length }}</td>
     <td>{{ batch.created_at|date:'Y-m-d H:i' }}<small>{{ batch.created_by.username|default:'system' }}</small></td>
     <td class="mono">{{ batch.sap_document_number|default:'—' }}</td>
