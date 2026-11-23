@@ -160,7 +160,7 @@ def ex_part_template_download(request):
 
     excel_file = ex_part_excel_bytes(plant)
     cycle_name = active_cycle_ref.name if active_cycle_ref else "no_active_cycle"
-    return http_excel(excel_file, f"Exclude PN {plant.code} setup {cycle_name}")
+    return http_excel(excel_file, f"{plant.code}_Exclude_PN_{cycle_name}")
 
 
 @login_required
@@ -221,13 +221,13 @@ def ex_part_batch(request, batch_id):
     # Get all rows first to calculate counts
     all_rows = TempExPartDetail.objects.filter(batch=batch_ref).select_related("part", "sap_location").order_by("id")
     error_count = all_rows.filter(is_valid=False).count()
-    
+
     # Get filter parameter from request, default to 'errors' only if there are errors, otherwise 'all'
     default_filter = "errors" if error_count > 0 else "all"
     filter_type = request.GET.get("filter", default_filter).lower()
     if filter_type not in ["all", "ready", "errors"]:
         filter_type = default_filter
-    
+
     # Apply filter to rows
     if filter_type == "ready":
         rows = all_rows.filter(is_valid=True)
@@ -235,7 +235,7 @@ def ex_part_batch(request, batch_id):
         rows = all_rows.filter(is_valid=False)
     else:  # "all"
         rows = all_rows
-    
+
     context["batch"] = batch_ref
     context["rows"] = rows
     context["filter_type"] = filter_type

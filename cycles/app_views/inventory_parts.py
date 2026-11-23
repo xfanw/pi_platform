@@ -167,7 +167,7 @@ def part_template_download(request):
     active_cycle_ref = context["cycle_ref"]
     excel_file = part_excel_bytes(plant)
     cycle_name = active_cycle_ref.name if active_cycle_ref else "no_active_cycle"
-    return http_excel(excel_file, f"Part List {plant.code} setup {cycle_name}")
+    return http_excel(excel_file, f"{plant.code}_Part_List_{cycle_name}")
 
 
 @login_required
@@ -235,17 +235,17 @@ def part_batch(request, batch_id):
     batch_ref = TempPartMain.objects.filter(id=batch_id).first()
     if not batch_ref:
         messages.error(request, "Batch doesn NOT exist. ")
-    
+
     # Get all rows first to calculate counts
     all_rows = TempPartDetail.objects.filter(batch=batch_ref).order_by("id")
     error_count = all_rows.filter(is_valid=False).count()
-    
+
     # Get filter parameter from request, default to 'errors' only if there are errors, otherwise 'all'
     default_filter = "errors" if error_count > 0 else "all"
     filter_type = request.GET.get("filter", default_filter).lower()
     if filter_type not in ["all", "ready", "errors"]:
         filter_type = default_filter
-    
+
     # Apply filter to rows
     if filter_type == "ready":
         rows = all_rows.filter(is_valid=True)
@@ -253,7 +253,7 @@ def part_batch(request, batch_id):
         rows = all_rows.filter(is_valid=False)
     else:  # "all"
         rows = all_rows
-    
+
     context["batch"] = batch_ref
     context["rows"] = rows
     context["filter_type"] = filter_type

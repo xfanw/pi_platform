@@ -79,7 +79,7 @@ def count_template_download(request):
     active_cycle_ref = context["cycle_ref"]
     excel_file = count_excel_bytes(plant)
     cycle_name = active_cycle_ref.name if active_cycle_ref else "no_active_cycle"
-    return http_excel(excel_file, f"{plant.code} Count upload Template {cycle_name}")
+    return http_excel(excel_file, f"{plant.code}_Count_upload_Template_{cycle_name}")
 
 
 @login_required

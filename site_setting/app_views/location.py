@@ -192,7 +192,7 @@ def location_template_download(request):
 
     excel_file = location_excel_bytes(plant)
 
-    return http_excel(excel_file, f"location_setup_{plant.code}")
+    return http_excel(excel_file, f"{plant.code}_location")
 
 
 @login_required
@@ -253,17 +253,17 @@ def location_batch(request, batch_id):
     batch_ref = TempLocationMain.objects.filter(id=batch_id).first()
     if not batch_ref:
         messages.error(request, "Batch doesn NOT exist. ")
-    
+
     # Get all rows first to calculate counts
     all_rows = TempLocationDetail.objects.filter(batch=batch_ref).order_by("id")
     error_count = all_rows.filter(is_valid=False).count()
-    
+
     # Get filter parameter from request, default to 'errors' only if there are errors, otherwise 'all'
     default_filter = "errors" if error_count > 0 else "all"
     filter_type = request.GET.get("filter", default_filter).lower()
     if filter_type not in ["all", "ready", "errors"]:
         filter_type = default_filter
-    
+
     # Apply filter to rows
     if filter_type == "ready":
         rows = all_rows.filter(is_valid=True)
@@ -271,7 +271,7 @@ def location_batch(request, batch_id):
         rows = all_rows.filter(is_valid=False)
     else:  # "all"
         rows = all_rows
-    
+
     context["batch"] = batch_ref
     context["rows"] = rows
     context["filter_type"] = filter_type
@@ -520,7 +520,7 @@ def sub_location_template_download(request):
 
     excel_file = sub_location_excel_bytes(plant)
 
-    return http_excel(excel_file, f"sub_location_setup_{plant.code}")
+    return http_excel(excel_file, f"{plant.code}_sub_location")
 
 
 @login_required
@@ -581,17 +581,17 @@ def sub_location_batch(request, batch_id):
     batch_ref = TempSubLocationMain.objects.filter(id=batch_id).first()
     if not batch_ref:
         messages.error(request, "Batch doesn NOT exist. ")
-    
+
     # Get all rows first to calculate counts
     all_rows = TempSubLocationDetail.objects.filter(batch=batch_ref).order_by("id")
     error_count = all_rows.filter(is_valid=False).count()
-    
+
     # Get filter parameter from request, default to 'errors' only if there are errors, otherwise 'all'
     default_filter = "errors" if error_count > 0 else "all"
     filter_type = request.GET.get("filter", default_filter).lower()
     if filter_type not in ["all", "ready", "errors"]:
         filter_type = default_filter
-    
+
     # Apply filter to rows
     if filter_type == "ready":
         rows = all_rows.filter(is_valid=True)
@@ -599,7 +599,7 @@ def sub_location_batch(request, batch_id):
         rows = all_rows.filter(is_valid=False)
     else:  # "all"
         rows = all_rows
-    
+
     context["batch"] = batch_ref
     context["rows"] = rows
     context["filter_type"] = filter_type

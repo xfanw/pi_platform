@@ -121,7 +121,7 @@ def counter_template_download(request):
 
     excel_file = counter_roster_excel_bytes(plant)
 
-    return http_excel(excel_file, f"people_onboarding_{plant.code}")
+    return http_excel(excel_file, f"{plant.code}_Counter_Roster")
 
 
 @login_required
@@ -182,17 +182,17 @@ def counter_batch(request, batch_id):
     batch_ref = UserOnboardingBatch.objects.filter(id=batch_id).first()
     if not batch_ref:
         messages.error(request, "Batch doesn NOT exist. ")
-    
+
     # Get all rows first to calculate counts
     all_rows = CounterOnboardingRow.objects.filter(batch=batch_ref).order_by("row_number")
     error_count = all_rows.filter(is_valid=False).count()
-    
+
     # Get filter parameter from request, default to 'errors' only if there are errors, otherwise 'all'
     default_filter = "errors" if error_count > 0 else "all"
     filter_type = request.GET.get("filter", default_filter).lower()
     if filter_type not in ["all", "ready", "errors"]:
         filter_type = default_filter
-    
+
     # Apply filter to rows
     if filter_type == "ready":
         rows = all_rows.filter(is_valid=True)
@@ -200,7 +200,7 @@ def counter_batch(request, batch_id):
         rows = all_rows.filter(is_valid=False)
     else:  # "all"
         rows = all_rows
-    
+
     context["batch"] = batch_ref
     context["rows"] = rows
     context["filter_type"] = filter_type

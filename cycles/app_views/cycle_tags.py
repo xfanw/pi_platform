@@ -217,7 +217,7 @@ def tag_template_download(request):
 
     excel_file = tag_range_excel_bytes(plant, active_cycle_ref)
     cycle_name = active_cycle_ref.name if active_cycle_ref else "no_active_cycle"
-    return http_excel(excel_file, f"tag range {plant.code} setup {cycle_name}")
+    return http_excel(excel_file, f"{plant.code}_Tag_Range_{cycle_name}")
 
 
 @login_required
