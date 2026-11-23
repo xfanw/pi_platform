@@ -142,6 +142,7 @@ def count_tag_create(request):
             sub_location=tag_ref.tag_range.sub_location,
             part=part_ref,
             quantity=quantity,
+            initial_quantity=quantity,
             counter_name=counter_name,
             entered_by=curr_user,
             entered_at=curr_time,

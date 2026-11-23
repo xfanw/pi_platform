@@ -24,9 +24,9 @@
   <div class="pane-title">Enter count</div>
   <form method="post" class="count-entry-grid" id="count-entry-form" action="{% url 'count:count_tag_create' %}">
     {% csrf_token %}
-    <div><label>Tag Number <span class="optional">Search Tags</span></label>
+    <div><label>Tag Number <a href="{% url 'cycles:tag_setup' %}" rel='noopener noreferrer' target='_blank'><i class='text-primary fa fa-pen-to-square'></i></a></label>
       <div class='input-group'>
-        <input class="form-control" name="tag_number" id="count-tag-number" maxlength="80" required value="{{ tag_number }}">
+        <input class="form-control" name="tag_number" id="count-tag-number" maxlength="80" required value="{{ tag_number }}" placeholder='Search tag or select from bottom'>
         <button class='btn btn-primary' type="button" id="search-tag-btn" onclick="search_tag()">&rArr;</button>
       </div>
     </div>
@@ -35,8 +35,8 @@
     <div><label>Sub Location</label><input class='form-control' id="sub_location" disabled placeholder="Input/Select Tag" value="{{ curr_sub_location }}"></div>
     <div><label>P/N</label><input name="part_number" id="part_number" class='form-control' maxlength="80" required ></div>
     <div><label>Count Qty</label><input name="quantity" type="number" class='form-control' min="0" step="0.0001" required></div>
-    <div><label>Counter</label>
-      <select name="counter_name" class='form-control' readonly>
+    <div><label>Counter <a href="{% url 'site_setting:counter_setup' %}" rel='noopener noreferrer' target='_blank'><i class='text-primary fa fa-pen-to-square'></i></a></label>
+      <select name="counter_name" class='form-control' readonly required>
         <option value="">Select Counter</option>
         {% for item in curr_counter_list %}
         <option value="{{ item }}">{{ item }}</option>

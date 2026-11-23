@@ -36,16 +36,12 @@
   </div>
   <div class="pane upload-pane">
     <div class="pane-title">Upload via template (replaces snapshot)</div>
-    {% if count_started %}
-      <p class="text-danger">Count has started for this cycle. Uploading is not allowed.</p>
-    {% else %}
     <form method="post" enctype="multipart/form-data" class="frow" action="{% url 'cycles:sap_part_file_upload' %}">
       {% csrf_token %}
       <div><label>Completed template (.xlsx)</label><input type="file" name="sap_part_file" accept=".xlsx" required></div>
       <button class='btn btn-sm btn-primary' type="submit">Upload &amp; Validate</button>
       <a class="btn btn-sm btn-outline-primary" href="{% url 'cycles:sap_part_template_download' %}">Download template</a>
     </form>
-    {% endif %}
     <p class="mut">Confirming an upload replaces all SAP inventory lines of this plant for the current PI. All P/Ns and SAP Locations must already exist in this PI. Each P/N + SAP Location may appear only once. A duplicate or any other error cancels the full upload.</p>
   </div>
 </section>

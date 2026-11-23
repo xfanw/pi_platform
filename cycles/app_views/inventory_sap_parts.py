@@ -7,7 +7,7 @@ from core.context_processors import get_basic_info
 from core.excel_file_handler.inventory_sap_part import sap_part_batch_upload, sap_part_batch_validate, sap_part_excel_bytes
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import BookInventoryLine, PartMaster, TempSAPPartDetail, TempSAPPartMain
-from variance.app_functions.variance import create_variance, update_variance_sap
+from variance.app_functions.variance import update_variance_sap
 from variance.models import CycleVariance
 
 PERMISSION = "Book Inventary.SAP Inventary"
@@ -61,7 +61,6 @@ def sap_part_setup(request):
         "sap_location__department", "sap_location__code"
     )
     context["sap_part_lines"] = line_set.order_by("part__part_number", "sap_location__code")
-    context["count_started"] = CycleVariance.objects.filter(cycle=active_cycle, plant=plant, count_quantity__gt=0).exists()
     if (search or sap_location_filter) and not line_set.exists():
         messages.warning(request, "No SAP inventory lines match this search.")
     return render(request, "inventory/sap_parts.html", context)
@@ -339,7 +338,7 @@ def sap_part_batch_confirm(request, batch_id):
     if new_sap_inv_list:
         CycleVariance.objects.filter(plant=plant, cycle=active_cycle_ref).delete()
         for sap_inv in new_sap_inv_list:
-            create_variance(sap_inv, None)
+            update_variance_sap(sap_inv)
 
     batch_ref.status = "Imported"
     batch_ref.imported_count = detail_set.count()

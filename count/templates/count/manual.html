@@ -26,19 +26,19 @@
   <form method="post" class="row" id="count-entry-form" action="{% url 'count:count_manual_create' %}">
     {% csrf_token %}
     <div class="row">
-      <div class='col-md-3'><label>SAP Location</label>
+      <div class='col-md-3'><label>SAP Location <a href="{% url 'site_setting:plant_setup' %}" rel='noopener noreferrer' target='_blank'><i class='text-primary fa fa-pen-to-square'></i></a></label>
         <select id="sap_location" name="sap_location" class='form-control'><option value='' selected">-- Select --</option>
         {% for item in cycle_sap_locations %}
           <option value="{{ item.0 }}">{{ item.1 }} / {{ item.0 }}</option>
         {% endfor %}
         </select>
       </div>
-      <div class='col-md-3'><label>Location</label>
+      <div class='col-md-3'><label>Location <a href="{% url 'site_setting:location_setup' %}" rel='noopener noreferrer' target='_blank'><i class='text-primary fa fa-pen-to-square'></i></a></label>
         <select class='form-control' id="location" name='location' required disabled>
           <option value="" disabled selected>Select SAP Location first</option>
         </select>
       </div>
-      <div class='col-md-3'><label>Sub-location<span class='mut'> (optional)</span></label>
+      <div class='col-md-3'><label>Sub-location <a href="{% url 'site_setting:sub_location_setup' %}" rel='noopener noreferrer' target='_blank'><i class='text-primary fa fa-pen-to-square'></i></a><span class='mut'> (optional)</span></label>
         <select class='form-control' id="sub_location" name="sub_location" disabled>
           <option value="" disabled selected>Select Location first</option>
         </select>
@@ -47,7 +47,7 @@
     <div class='row mt-2'>
     <div class='col-md-3'><label>P/N</label><input name="part_number" id="part_number" maxlength="80" required disabled class='form-control'></div>
     <div class='col-md-3'><label>Count Qty</label><input name="quantity" id="quantity" type="number" min="0" step="0.0001" required disabled class='form-control'></div>
-    <div class='col-md-3'><label>Counter<span class='mut'> (default: current user)</span></label><select name="counter_name" id="counter_name" class='form-control' readonly><option value="">Select Counter</option>{% for item in counter_roster %}<option value="{{ item.display_name }} [{{ item.employee_id }}]">{{ item.display_name }} · {{ item.employee_id }}</option>{% endfor %}</select></div>
+    <div class='col-md-3'><label>Counter <a href="{% url 'site_setting:counter_setup' %}" rel='noopener noreferrer' target='_blank'><i class='text-primary fa fa-pen-to-square'></i></a></label><select name="counter_name" id="counter_name" class='form-control' readonly required><option value="">Select Counter</option>{% for item in counter_roster %}<option value="{{ item.display_name }} [{{ item.employee_id }}]">{{ item.display_name }} · {{ item.employee_id }}</option>{% endfor %}</select></div>
     <div class='col-md-3'><label>Action</label><button class='btn btn-primary' id='add-part-button' type="submit" disabled>Submit Count</button></div>
     </div>
   </form>

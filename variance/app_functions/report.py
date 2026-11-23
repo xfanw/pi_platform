@@ -78,7 +78,7 @@ def get_part_sap_matrix(curr_var_set, tk_locations, cs_locations):
         cs_book_qty = cs_var_set.aggregate(book_qty=Sum("sap_quantity"))["book_qty"] or 0
 
         resolution_class = "review"
-        if cs_abs_qty == 0 and cs_var_qty == 0:
+        if tk_var_qty == 0 and cs_var_qty == 0:
             resolution_status = "Settled"
             resolution_class = "settled"
         else:

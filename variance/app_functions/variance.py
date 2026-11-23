@@ -2,7 +2,6 @@ from count.models import CountRecord
 from django.db.models import Sum
 from decimal import Decimal
 from variance.models import CycleVariance
-from site_setting.models import SAPLocation
 
 
 def create_variance(sap_book_ref, count_ref):
@@ -10,12 +9,12 @@ def create_variance(sap_book_ref, count_ref):
         return
     cycle = sap_book_ref.cycle if sap_book_ref else count_ref.cycle if count_ref else None
     plant = cycle.plant if cycle else None
-    
+
     sap_location = None
     sap_code = None
     sap_department = None
     sap_inventory_type = None
-    
+
     if sap_book_ref:
         sap_location = sap_book_ref.sap_location
         sap_code = sap_location.code if sap_location else None
@@ -26,11 +25,11 @@ def create_variance(sap_book_ref, count_ref):
         sap_code = sap_location.code if sap_location else None
         sap_department = sap_location.department if sap_location else None
         sap_inventory_type = sap_location.inventory_type if sap_location else None
-    
+
     sap_qty = sap_book_ref.quantity if sap_book_ref else 0
     count_qty = Decimal(count_ref.quantity) if count_ref else 0
     part = sap_book_ref.part if sap_book_ref else count_ref.part if count_ref else None
-    
+
     CycleVariance.objects.create(
         plant=plant,
         cycle=cycle,
@@ -50,7 +49,7 @@ def update_variance_sap(sap_ref):
     sap_location = sap_ref.sap_location
     sap_code = sap_location.code if sap_location else None
     sap_department = sap_location.department if sap_location else None
-    
+
     var_ref = CycleVariance.objects.filter(
         plant=sap_ref.cycle.plant,
         cycle=sap_ref.cycle,
@@ -85,7 +84,7 @@ def update_variance_sap(sap_ref):
 def update_variance_count(count_ref):
     sap_location = count_ref.sap_location
     sap_code = sap_location.code if sap_location else None
-    
+
     var_ref = CycleVariance.objects.filter(
         plant=count_ref.cycle.plant,
         cycle=count_ref.cycle,
@@ -120,7 +119,7 @@ def update_variance_count(count_ref):
 def delete_variance_count(count_ref):
     sap_location = count_ref.sap_location
     sap_code = sap_location.code if sap_location else None
-    
+
     var_ref = CycleVariance.objects.filter(
         plant=count_ref.cycle.plant,
         cycle=count_ref.cycle,

@@ -65,7 +65,7 @@ class CountRecord(models.Model):
     tag_number = models.CharField(max_length=80, blank=True)
     quantity = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
     counter_name = models.CharField(max_length=160, blank=True)
-    initial_count_value = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
+    initial_quantity = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
     entered_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="entered_count_records")
     entered_at = models.DateTimeField(null=True)
     accepted_at = models.DateTimeField(null=True)
