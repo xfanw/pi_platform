@@ -383,6 +383,31 @@ h2 {
     background: #f7f8fa;
     border-color: #dfe4eb;
 }
+
+.kpi.cool {
+    background: #f5f9fe !important;
+    border-color: #d5e4f4 !important;
+}
+.kpi.good {
+    background: #f4faf8 !important;
+    border-color: #d5e9e3 !important;
+}
+.kpi.warm {
+    background: #fffaf0 !important;
+    border-color: #f1e3c4 !important;
+}
+.kpi.bad {
+    background: #fff7f5 !important;
+    border-color: #f1d8d3 !important;
+}
+.kpi.amber {
+    background: #f7f8fa !important;
+    border-color: #dfe4eb !important;
+}
+.kpi.active {
+    border: 2px solid #0066cc !important;
+    box-shadow: 0 0 8px rgba(0, 102, 204, 0.3) !important;
+}
 .kpi .lbl {
     font-size: 11px;
     color: var(--ink-faint);

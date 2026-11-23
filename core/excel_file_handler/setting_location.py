@@ -99,7 +99,7 @@ def location_batch_upload(curr_file, sheet_name, *, plant, actor):
             curr_error = []
             curr_valid = True
             curr_sap_id = text_val(row[0].split("_")[0]).strip().upper()
-            curr_name = text_val(row[1]).strip()
+            curr_name = text_val(row[1]).strip().title()
             if not curr_sap_id:
                 curr_valid = False
                 curr_error.append("SAP ID cannot be empty. ")

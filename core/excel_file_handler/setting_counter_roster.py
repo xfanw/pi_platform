@@ -130,9 +130,9 @@ def counter_batch_upload(curr_file, sheet_name, *, plant, actor):
             curr_error = []
             curr_valid = True
             curr_emp_id = text_val(row[0]).strip().capitalize()
-            curr_name = text_val(row[1]).strip().capitalize()
+            curr_name = text_val(row[1]).strip().title()
             curr_depart = text_val(row[2]).strip() if row[2] else ""
-            curr_sap_loc = text_val(row[3]).strip() if row[3] else ""
+            curr_sap_loc = text_val(row[3]).strip().upper() if row[3] else ""
             if not curr_emp_id:
                 curr_valid = False
                 curr_error.append("User ID cannot be empty. ")

@@ -77,7 +77,7 @@ def sap_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
             if not any(value not in (None, "") for value in row[:3]):
                 continue
             part_number = text_val(row[0])
-            location_code = text_val(row[1])
+            location_code = text_val(row[1]).upper() if row[1] else ""
             line_errors = []
 
             part = parts.get(part_number)

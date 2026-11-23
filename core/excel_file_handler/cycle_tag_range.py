@@ -98,7 +98,7 @@ def tag_batch_upload(curr_file, sheet_name, plant, cycle, actor):
             if row[0] or row[1] or row[2] or row[3] or row[4]:
                 curr_error = []
                 curr_valid = True
-                curr_sap_code = text_val(row[0]).strip() if row[0] else ""
+                curr_sap_code = text_val(row[0]).strip().upper() if row[0] else ""
                 curr_loc = text_val(row[1]).strip() if row[1] else ""
                 curr_sub_loc = text_val(row[2]).strip() if row[2] else ""
                 curr_start = text_val(row[3]).strip() if row[3] else ""

@@ -100,11 +100,11 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
                 text_val(value) for value in row
             )
             part_number = part_number.strip()
-            sap_code = sap_code.strip()
-            location_name = location_name.strip()
-            sub_location_name = sub_location_name.strip()
+            sap_code = sap_code.strip().upper() if sap_code else ""
+            location_name = location_name.strip() if location_name else ""
+            sub_location_name = sub_location_name.strip() if sub_location_name else ""
             tag_number = tag_number.strip()
-            counter_name = counter_name.strip() or actor.first_name
+            counter_name = counter_name.strip().title() if counter_name else actor.first_name
 
             part = parts.get(part_number)
 

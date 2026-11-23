@@ -23,9 +23,15 @@
 </div>
 {% else %}
 <div class="cards bulk-preview-kpis">
-  <div class="kpi cool"><span>Total Rows</span><strong class='fw-bold'> {{ batch.row_count }}</strong></div>
-  <div class="kpi good"><span>Ready</span><strong class='fw-bold'> {{ batch.ready_count }}</strong></div>
-  <div class="kpi bad"><span>Errors</span><strong class="{% if batch.error_count %}negative{% endif %} fw-bold"> {{ batch.error_count }}</strong></div>
+  <a href="?filter=all" class="kpi-link">
+    <div class="kpi cool {% if filter_type == 'all' %}active{% endif %}"><span>Total Rows</span><strong class='fw-bold'> {{ total_count }}</strong></div>
+  </a>
+  <a href="?filter=ready" class="kpi-link">
+    <div class="kpi good {% if filter_type == 'ready' %}active{% endif %}"><span>Ready</span><strong class='fw-bold'> {{ ready_count }}</strong></div>
+  </a>
+  <a href="?filter=errors" class="kpi-link">
+    <div class="kpi bad {% if filter_type == 'errors' %}active{% endif %}"><span>Errors</span><strong class="{% if error_count %}negative{% endif %} fw-bold"> {{ error_count }}</strong></div>
+  </a>
   <div class="kpi warm"><span>Status: </span><strong class='fw-bold'> {{ batch.status }}</strong></div>
 </div>
 {% endif %}
@@ -59,4 +65,19 @@
     </tbody>
   </table></div>
 </section>
+
+<style>
+.kpi-link {
+  text-decoration: none;
+  color: inherit;
+}
+.kpi-link .kpi.active {
+  border: 2px solid #0066cc;
+  box-shadow: 0 0 8px rgba(0, 102, 204, 0.3);
+}
+.kpi-link .kpi:hover {
+  cursor: pointer;
+  opacity: 0.9;
+}
+</style>
 {% endblock %}

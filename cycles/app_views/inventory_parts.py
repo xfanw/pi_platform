@@ -235,8 +235,31 @@ def part_batch(request, batch_id):
     batch_ref = TempPartMain.objects.filter(id=batch_id).first()
     if not batch_ref:
         messages.error(request, "Batch doesn NOT exist. ")
+    
+    # Get all rows first to calculate counts
+    all_rows = TempPartDetail.objects.filter(batch=batch_ref).order_by("id")
+    error_count = all_rows.filter(is_valid=False).count()
+    
+    # Get filter parameter from request, default to 'errors' only if there are errors, otherwise 'all'
+    default_filter = "errors" if error_count > 0 else "all"
+    filter_type = request.GET.get("filter", default_filter).lower()
+    if filter_type not in ["all", "ready", "errors"]:
+        filter_type = default_filter
+    
+    # Apply filter to rows
+    if filter_type == "ready":
+        rows = all_rows.filter(is_valid=True)
+    elif filter_type == "errors":
+        rows = all_rows.filter(is_valid=False)
+    else:  # "all"
+        rows = all_rows
+    
     context["batch"] = batch_ref
-    context["rows"] = TempPartDetail.objects.filter(batch=batch_ref).order_by("id")
+    context["rows"] = rows
+    context["filter_type"] = filter_type
+    context["total_count"] = all_rows.count()
+    context["ready_count"] = all_rows.filter(is_valid=True).count()
+    context["error_count"] = error_count
     return render(request, "inventory/part_batch.html", context)
 
 
