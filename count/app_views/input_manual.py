@@ -180,7 +180,7 @@ def count_manual_create(request):
             part=part_ref,
             quantity=quantity,
             counter_name=counter_name,
-            # counter_employee_id=counter_employee.employee_id if counter_employee else "",
+            initial_quantity=quantity,
             entered_by=curr_user,
             entered_at=curr_time,
             accepted_at=curr_time,

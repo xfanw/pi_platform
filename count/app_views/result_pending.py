@@ -144,6 +144,7 @@ def pending_part_create(request):
             sub_location=ex_part.sub_location,
             tag_number=ex_part.tag_number,
             quantity=ex_part.quantity,
+            initial_quantity=ex_part.quantity,
             counter_name=ex_part.counter_name,
             entered_by=ex_part.created_by,
             entered_at=ex_part.created_at,
@@ -208,15 +209,17 @@ def pending_part_map(request):
             sub_location=ex_part.sub_location,
             tag_number=ex_part.tag_number,
             quantity=ex_part.quantity,
+            initial_quantity=ex_part.quantity,
             counter_name=ex_part.counter_name,
             entered_by=ex_part.created_by,
             entered_at=ex_part.created_at,
         )
-        tag_ref = CycleTagDetail.objects.filter(tag_number=ex_part.tag_number, tag_range__cycle=active_cycle).first()
-        if tag_ref:
-            CycleTagDetail.objects.filter(tag_number=tag_ref.tag_number).update(
-                count_record=count_ref, exception_record=None, is_counted=True, updated_by=curr_user
-            )
+        if ex_part.tag_number:
+            tag_ref = CycleTagDetail.objects.filter(tag_number=ex_part.tag_number, tag_range__cycle=active_cycle).first()
+            if tag_ref:
+                CycleTagDetail.objects.filter(tag_number=tag_ref.tag_number).update(
+                    count_record=count_ref, exception_record=None, is_counted=True, updated_by=curr_user
+                )
         update_variance_count(count_ref)
         messages.success(request, f"Part {existing_part_number} mapped to existing part successfully.")
     except Exception as e:

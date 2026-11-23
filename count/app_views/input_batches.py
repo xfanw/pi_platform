@@ -153,17 +153,17 @@ def count_batch(request, batch_id):
     if not batch_ref:
         messages.error(request, "Batch does not exist.")
         return redirect("count:count_upload")
-    
+
     # Get all rows first to calculate counts
     all_rows = TempCountLoadDetail.objects.filter(batch=batch_ref).order_by("id")
     error_count = all_rows.filter(is_valid=False).count()
-    
+
     # Get filter parameter from request, default to 'errors' only if there are errors, otherwise 'all'
     default_filter = "errors" if error_count > 0 else "all"
     filter_type = request.GET.get("filter", default_filter).lower()
     if filter_type not in ["all", "ready", "errors"]:
         filter_type = default_filter
-    
+
     # Apply filter to rows
     if filter_type == "ready":
         rows = all_rows.filter(is_valid=True)
@@ -171,7 +171,7 @@ def count_batch(request, batch_id):
         rows = all_rows.filter(is_valid=False)
     else:  # "all"
         rows = all_rows
-    
+
     context["batch"] = batch_ref
     context["rows"] = rows
     context["filter_type"] = filter_type
@@ -230,6 +230,7 @@ def count_batch_confirm(request, batch_id):
                             tag_number=count_detail.tag_number,
                             quantity=count_detail.quantity,
                             counter_name=count_detail.counter_name,
+                            initial_quantity=count_detail.quantity,
                             entered_by=curr_user,
                             entered_at=curr_time,
                             accepted_at=curr_time,
