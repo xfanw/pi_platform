@@ -89,7 +89,9 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
         counted_tags = set(CycleTagDetail.objects.filter(tag_range__cycle=cycle, is_counted=True).values_list("tag_number", flat=True))
 
         details = []
-        for line_number, row in enumerate(rows, start=2):
+        line_number = 1
+        for row in rows:
+            line_number += 1
             row = tuple(row[: len(COUNT_BATCH_HEADERS)]) + (None,) * max(0, len(COUNT_BATCH_HEADERS) - len(row))
             if not any(value not in (None, "") for value in row):
                 continue
@@ -180,6 +182,7 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
                     counter_name=counter_name,
                     validation_errors=errors,
                     is_valid=is_valid,
+                    row_number=line_number,
                     created_by=actor,
                     updated_by=actor,
                 )

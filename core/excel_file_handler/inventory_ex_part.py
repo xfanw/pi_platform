@@ -70,7 +70,9 @@ def ex_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
 
         seen = set()
         records = []
-        for line_no, row in enumerate(rows, start=2):
+        line_no = 1
+        for row in rows:
+            line_no += 1
             curr_valid = True
             row = tuple(row) + (None,) * (3 - len(row))
             part_number, location_code, reason = (text_val(value) for value in row[:3])
@@ -103,7 +105,7 @@ def ex_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                     line_errors.append("Duplicated PN and SAP Location in this file")
                 seen.add(key)
 
-            records.append((part, location, reason, curr_valid, line_errors))
+            records.append((part, location, reason, curr_valid, line_errors, line_no))
 
         if not records:
             return "error", "File is empty."
@@ -129,10 +131,11 @@ def ex_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                     reason=reason,
                     is_valid=curr_valid,
                     validation_errors=line_errors,
+                    row_number=row_number,
                     created_by=actor,
                     updated_by=actor,
                 )
-                for part, location, reason, curr_valid, line_errors in records
+                for part, location, reason, curr_valid, line_errors, row_number in records
             ]
         )
     except Exception as e:

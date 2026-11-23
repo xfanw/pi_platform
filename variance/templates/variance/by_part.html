@@ -36,13 +36,13 @@
 <tbody>
 {% for item in var_set %}
   <tr>
-    <td><span class="chip">{{ item.sap_location.code }}</span></td>
-    <td>{{ item.sap_location.department }}</td>
+    <td><span class="chip">{{ item.sap_code }}</span></td>
+    <td>{{ item.sap_department }}</td>
     <td>{{ item.inventory_type }}</td>
     <td class="num">{{ item.sap_quantity|floatformat:-4 }}</td>
     <td class="num">{{ item.count_quantity|floatformat:-4 }}</td>
     <td class="num {% if item.variance_quantity < 0 %}neg{% elif item.variance_quantity > 0 %}pos{% endif %}">{{ item.variance_quantity|floatformat:-4 }}</td>
-    <td class="num {% if item.variance_value < 0 %}neg{% elif item.variance_value > 0 %}pos{% endif %}">{% if item.sap_location.inventory_type == 'CS' %}—{% else %}${{ item.variance_value|floatformat:2 }}{% endif %}</td>
+    <td class="num {% if item.variance_value < 0 %}neg{% elif item.variance_value > 0 %}pos{% endif %}">{% if item.sap_inventory_type == 'CONSIGNED' %}—{% else %}${{ item.variance_value|floatformat:2 }}{% endif %}</td>
     <td class="num">{{ item.qty_accuracy|floatformat:-2 }}%</td>
   </tr>
 {% empty %}
@@ -59,17 +59,17 @@
   <div class="variance-location-picker pn-location-picker"><label for="pnVarianceLocation">SAP Location</label>
   <select id="pnVarianceLocation" class="variance-location-select">
     {% for row in review_rows %}
-    <option value="{{ row.sap_location.id }}" {% if row.sap_location.code == selected_sap_code %}selected{% endif %}>{{ row.sap_location.code }} · {{ row.sap_location.department }}</option>
+    <option value="{{ row.variance.sap_code }}" {% if row.variance.sap_code == selected_sap_code %}selected{% endif %}>{{ row.variance.sap_code }} · {{ row.variance.sap_department }}</option>
     {% endfor %}
   </select>
   <small>Only SAP Locations with a <b class='text-danger fw-bold'>non-zero</b> Live Variance are listed.</small></div>
   <div class="variance-review-list compact">
   {% for row in review_rows %}
-    <article class="variance-review-item" data-location-panel="{{ row.sap_location.id }}" style="display:none">
+    <article class="variance-review-item" data-location-panel="{{ row.variance.sap_code }}" style="display:none">
       <div class="variance-review-summary">
-        <div><span>SAP Location</span><b>{{ row.sap_location.code }}</b><small>{{ row.sap_location.department }} · {{ row.variance.inventory_type }}</small></div>
+        <div><span>SAP Location</span><b>{{ row.variance.sap_code }}</b><small>{{ row.variance.sap_department }} · {{ row.variance.inventory_type }}</small></div>
         <div><span>Variance Qty</span><b class="{% if row.variance.variance_quantity < 0 %}neg{% elif row.variance.variance_quantity > 0 %}pos{% endif %}">{{ row.variance.variance_quantity|floatformat:-4 }}</b></div>
-        <div><span>Variance Value</span><b class="{% if row.variance.variance_value < 0 %}neg{% elif row.variance.variance_value > 0 %}pos{% endif %}">{% if row.sap_location.inventory_type == 'CS' %}—{% else %}${{ row.variance.variance_value|floatformat:2 }}{% endif %}</b></div>
+        <div><span>Variance Value</span><b class="{% if row.variance.variance_value < 0 %}neg{% elif row.variance.variance_value > 0 %}pos{% endif %}">{% if row.variance.sap_inventory_type == 'CONSIGNED' %}—{% else %}${{ row.variance.variance_value|floatformat:2 }}{% endif %}</b></div>
         <div><span>Status</span>
         {% if row.resolution %}<b><span class="resolution-chip {% if row.resolution.status == 'Posted' %}posted{% elif row.resolution.status == 'To Post' %}to-post{% elif row.resolution.status == 'Not Post' %}not-post{% elif row.resolution.status == 'Closed Resolved' %}settled{% else %}review{% endif %}">{{ row.resolution.status }}</span></b>{% else %}<b><span class="resolution-chip review">Needs Review</span></b>{% endif %}</div>
         <div><span>SAP Document</span><b>{{ row.resolution.sap_document_number|default:'—' }}</b></div>

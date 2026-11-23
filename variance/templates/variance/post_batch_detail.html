@@ -19,10 +19,10 @@
   {% for line in batch_lines %}
     <tr class="{% if not line.is_included %}excluded-row{% endif %}">
       {% if is_draft and can_confirm %}<td>
-      <input type="checkbox" class="post-line-check" checked data-line-id="{{ line.id }}" aria-label="Include {{ line.part_number_snapshot }} at {{ line.variance.sap_location.code }}">
+      <input type="checkbox" class="post-line-check" checked data-line-id="{{ line.id }}" aria-label="Include {{ line.part_number_snapshot }} at {{ line.variance.sap_code }}">
       <input type="checkbox" name="excluded_line_id" value="{{ line.id }}" class="post-line-excluded" hidden></td>{% endif %}
       <td><b>{{ line.part_number_snapshot }}</b></td>
-      <td><span class="chip">{{line.variance.sap_location.code }}</span></td>
+      <td><span class="chip">{{line.variance.sap_code }}</span></td>
       <td>{{ line.variance.inventory_type }}</td><td><span class="movement-chip">{{ line.movement_type }}</span></td>
       <td class="num">${{ line.variance.map_price|floatformat:2 }}</td>
       <td class="num {% if line.variance_quantity_snapshot < 0 %}neg{% else %}pos{% endif %}">{{ line.variance_quantity_snapshot|floatformat:-4 }}</td><td class="num {% if line.variance_value_snapshot < 0 %}neg{% else %}pos{% endif %}">${{ line.variance_value_snapshot|floatformat:2 }}</td>

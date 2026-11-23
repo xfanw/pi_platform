@@ -42,12 +42,12 @@ def variance_by_location(request):
 
     variance_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
     if selected_department:
-        variance_set = variance_set.filter(sap_location__department=selected_department)
+        variance_set = variance_set.filter(sap_department=selected_department)
 
     if selected_type in ("", "FII_OWNED"):
         tk_variance = (
-            variance_set.filter(sap_location__inventory_type="FII_OWNED")
-            .values("sap_location__code", "sap_location__department")
+            variance_set.filter(sap_inventory_type="FII_OWNED")
+            .values("sap_code", "sap_department")
             .annotate(
                 total_part_count=Count("part", distinct=True),
                 var_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
@@ -73,8 +73,8 @@ def variance_by_location(request):
 
     if selected_type in ("", "CONSIGNED"):
         cs_variance = list(
-            variance_set.filter(sap_location__inventory_type="CONSIGNED")
-            .values("sap_location__code", "sap_location__department")
+            variance_set.filter(sap_inventory_type="CONSIGNED")
+            .values("sap_code", "sap_department")
             .annotate(
                 part_count=Count("part", distinct=True),
                 variance_part_count=Count("part", filter=(~Q(variance_quantity=0)), distinct=True),
@@ -82,24 +82,23 @@ def variance_by_location(request):
             )
         )
         accuracy_totals = defaultdict(int)
-        location_codes = [item["sap_location__code"] for item in cs_variance]
-        if location_codes:
+        sap_codes = [item["sap_code"] for item in cs_variance]
+        if sap_codes:
             accuracy_rows = (
-                CycleVariance.objects.filter(cycle=active_cycle, plant=plant, sap_location__code__in=location_codes)
-                .select_related("sap_location")
-                .only("sap_location__code", "sap_quantity", "count_quantity")
+                CycleVariance.objects.filter(cycle=active_cycle, plant=plant, sap_code__in=sap_codes)
+                .only("sap_code", "sap_quantity", "count_quantity")
             )
             for variance in accuracy_rows.iterator():
-                accuracy_totals[variance.sap_location.code] += variance.qty_accuracy
+                accuracy_totals[variance.sap_code] += variance.qty_accuracy
         for item in cs_variance:
-            item["acc_avg"] = accuracy_totals[item["sap_location__code"]] / item["part_count"]
+            item["acc_avg"] = accuracy_totals[item["sap_code"]] / item["part_count"]
 
         context["cs_variance"] = cs_variance
 
     context["active_department_list"] = list(
-        CycleSAPLocation.objects.filter(plant=plant, cycle=active_cycle, is_active=True)
-        .values_list("sap_location__department", flat=True)
-        .order_by("sap_location__department")
+        CycleVariance.objects.filter(plant=plant, cycle=active_cycle)
+        .values_list("sap_department", flat=True)
+        .order_by("sap_department")
         .distinct()
     )
     return render(request, "variance/by_location.html", context)

@@ -36,7 +36,7 @@
     <div><label>P/N</label><input name="part_number" id="part_number" class='form-control' maxlength="80" required ></div>
     <div><label>Count Qty</label><input name="quantity" type="number" class='form-control' min="0" step="0.0001" required></div>
     <div><label>Counter</label>
-      <select name="counter_name" class='form-control'>
+      <select name="counter_name" class='form-control' readonly>
         <option value="">Select Counter</option>
         {% for item in curr_counter_list %}
         <option value="{{ item }}">{{ item }}</option>

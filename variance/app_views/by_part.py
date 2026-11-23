@@ -50,17 +50,20 @@ def variance_by_part(request):
     count_set = CountRecord.objects.filter(cycle=active_cycle, part=part).order_by("sap_location__code", "entered_at")
     context["count_set"] = count_set
 
-    context["var_sap_code"] = list(var_set.exclude(variance_quantity=0).values_list("sap_location__code", flat=True).distinct())
+    context["var_sap_code"] = list(var_set.exclude(variance_quantity=0).values_list("sap_code", flat=True).distinct())
     review_rows = []
     for sap_code in context["var_sap_code"]:
-        review_rows.append(
-            {
-                "sap_location": SAPLocation.objects.filter(plant=plant, code=sap_code).first(),
-                "variance": var_set.filter(sap_location__code=sap_code).first(),
-                "comments": var_set.filter(sap_location__code=sap_code).first().comments.order_by("created_at"),
-                "resolution": var_set.filter(sap_location__code=sap_code).first().resolutions.first(),
-            }
-        )
+        variance = var_set.filter(sap_code=sap_code).first()
+        if variance:
+            sap_location = SAPLocation.objects.filter(plant=plant, code=sap_code).first()
+            review_rows.append(
+                {
+                    "sap_location": sap_location,
+                    "variance": variance,
+                    "comments": variance.comments.order_by("created_at"),
+                    "resolution": variance.resolutions.first(),
+                }
+            )
     context["review_rows"] = review_rows
     return render(request, "variance/by_part.html", context)
 
@@ -91,7 +94,7 @@ def add_comment(request):
         if not active_cycle:
             messages.error(request, "No active or closed cycle found for the plant.")
             return redirect(
-                f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}"
+                f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_code}"
             )
 
     if not variance:
@@ -99,11 +102,11 @@ def add_comment(request):
         return redirect("variance:variance_by_part")
     if not comment:
         messages.error(request, "Comment cannot be empty.")
-        return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")
+        return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_code}")
 
     VarianceComment.objects.create(created_by=curr_user, body=comment, variance=variance)
     messages.success(request, "Comment added successfully.")
-    return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")
+    return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_code}")
 
 
 @login_required
@@ -139,9 +142,28 @@ def add_decision(request):
         return redirect("variance:variance_by_part")
     if not decision:
         messages.error(request, "Decision cannot be empty.")
-        return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")
+        return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_code}")
+    
+    # Update the CycleVariance status
     variance.status = decision
     variance.save()
-    VarianceResolution.objects.create(created_by=curr_user, variance=variance, status=decision, reason=reason)
+    
+    # Create or update the VarianceResolution and sync status
+    resolution, created = VarianceResolution.objects.update_or_create(
+        variance=variance,
+        defaults={
+            "created_by": curr_user,
+            "status": decision,
+            "reason": reason,
+            "decided_at": curr_time,
+            "decided_by": curr_user,
+        }
+    )
+    
+    # Ensure both records have consistent status
+    if variance.status != resolution.status:
+        variance.status = resolution.status
+        variance.save()
+    
     messages.success(request, "Decision added successfully.")
-    return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_location.code}")
+    return redirect(f"/variance/variance_by_part?part_number={variance.part.part_number}&sap_code={variance.sap_code}")

@@ -139,6 +139,7 @@ def tag_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                         validation_errors=curr_error,
                         is_valid=curr_valid,
                         batch=batch,
+                        row_number=row_index,
                         created_by=actor,
                         updated_by=actor,
                     )

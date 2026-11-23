@@ -47,7 +47,7 @@
     <div class='row mt-2'>
     <div class='col-md-3'><label>P/N</label><input name="part_number" id="part_number" maxlength="80" required disabled class='form-control'></div>
     <div class='col-md-3'><label>Count Qty</label><input name="quantity" id="quantity" type="number" min="0" step="0.0001" required disabled class='form-control'></div>
-    <div class='col-md-3'><label>Counter<span class='mut'> (default: current user)</span></label><select name="counter_name" id="counter_name" class='form-control'><option value="">Select Counter</option>{% for item in counter_roster %}<option value="{{ item.display_name }} [{{ item.employee_id }}]">{{ item.display_name }} · {{ item.employee_id }}</option>{% endfor %}</select></div>
+    <div class='col-md-3'><label>Counter<span class='mut'> (default: current user)</span></label><select name="counter_name" id="counter_name" class='form-control' readonly><option value="">Select Counter</option>{% for item in counter_roster %}<option value="{{ item.display_name }} [{{ item.employee_id }}]">{{ item.display_name }} · {{ item.employee_id }}</option>{% endfor %}</select></div>
     <div class='col-md-3'><label>Action</label><button class='btn btn-primary' id='add-part-button' type="submit" disabled>Submit Count</button></div>
     </div>
   </form>

@@ -21,13 +21,13 @@ def get_live_var_context(curr_var_set):
         book_value=Sum(F("sap_quantity") * F("map_price")),
         net_variance=Sum("variance_value"),
     )
-    tk_values = curr_var_set.filter(sap_location__inventory_type="FII_OWNED").aggregate(
+    tk_values = curr_var_set.filter(sap_inventory_type="FII_OWNED").aggregate(
         book_value=Sum(F("sap_quantity") * F("map_price")),
         count_value=Sum(F("count_quantity") * F("map_price")),
         net_variance=Sum("variance_value"),
         abs_variance=Sum(Abs("variance_value")),
     )
-    cs_variances = curr_var_set.filter(sap_location__inventory_type="CONSIGNED")
+    cs_variances = curr_var_set.filter(sap_inventory_type="CONSIGNED")
 
     tk_book_value = tk_values["book_value"] or 0
     tk_count_value = tk_values["count_value"] or 0
@@ -58,19 +58,19 @@ def get_part_sap_matrix(curr_var_set, tk_locations, cs_locations):
     lines = []
     part_sap_matrix = {}
     for var_ref in curr_var_set:
-        key = (var_ref.part.part_number, var_ref.sap_location.code)
+        key = (var_ref.part.part_number, var_ref.sap_code)
         part_sap_matrix[key] = var_ref
     parts = curr_var_set.values_list("part__part_number", flat=True).distinct()
     for part in parts:
         inventory_type = []
 
-        tk_var_set = curr_var_set.filter(part__part_number=part, sap_location__inventory_type="FII_OWNED")
+        tk_var_set = curr_var_set.filter(part__part_number=part, sap_inventory_type="FII_OWNED")
         if tk_var_set.exists():
             inventory_type.append("TK")
         tk_var_qty = tk_var_set.aggregate(var_qty=Sum("variance_quantity"))["var_qty"] or 0
         tk_var_val = tk_var_set.aggregate(var_val=Sum(F("variance_quantity") * F("map_price")))["var_val"] or 0
 
-        cs_var_set = curr_var_set.filter(part__part_number=part, sap_location__inventory_type="CONSIGNED")
+        cs_var_set = curr_var_set.filter(part__part_number=part, sap_inventory_type="CONSIGNED")
         if cs_var_set.exists():
             inventory_type.append("CS")
         cs_var_qty = cs_var_set.aggregate(var_qty=Sum("variance_quantity"))["var_qty"] or 0

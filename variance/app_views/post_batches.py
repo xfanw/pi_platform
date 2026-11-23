@@ -122,11 +122,29 @@ def post_batch_confirm(request, batch_id):
             batch_lines = PostBatchLine.objects.filter(batch=batch)
             included_lines = batch_lines.exclude(id__in=exclude_line_ids)
             excluded_lines = batch_lines.filter(id__in=exclude_line_ids)
-            for lines, status in ((included_lines, "Posted"), (excluded_lines, "Needs Review")):
-                CycleVariance.objects.filter(pk__in=lines.values("variance_id")).update(status=status)
-                VarianceResolution.objects.filter(pk__in=lines.values("resolution_id")).update(
-                    status=status, updated_at=timezone.now()
+            
+            # Update included lines to "Posted"
+            for line in included_lines:
+                # Update VarianceResolution status
+                VarianceResolution.objects.filter(pk=line.resolution_id).update(
+                    status="Posted",
+                    sap_document_number=sap_document_number,
+                    decided_at=curr_time,
+                    decided_by=curr_user,
                 )
+                # Update CycleVariance status to match
+                CycleVariance.objects.filter(pk=line.variance_id).update(status="Posted")
+            
+            # Update excluded lines to "Needs Review"
+            for line in excluded_lines:
+                # Update VarianceResolution status
+                VarianceResolution.objects.filter(pk=line.resolution_id).update(
+                    status="Needs Review",
+                    decided_at=curr_time,
+                    decided_by=curr_user,
+                )
+                # Update CycleVariance status to match
+                CycleVariance.objects.filter(pk=line.variance_id).update(status="Needs Review")
 
         messages.success(request, "Post batch confirmed successfully.")
     elif action == "cancel":

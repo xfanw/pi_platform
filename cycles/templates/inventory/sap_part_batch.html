@@ -36,10 +36,11 @@
 <section class="card bulk-preview-card">
   <div class="table-section-head"><h2>Rows</h2></div>
   <div class="scroll"><table class="bulk-preview-table">
-    <thead><tr><th>Part Number</th><th>Description</th><th>SAP Location</th><th>Qty</th><th>Validation</th></tr></thead>
+    <thead><tr><th>Row</th><th>Part Number</th><th>Description</th><th>SAP Location</th><th>Qty</th><th>Validation</th></tr></thead>
     <tbody>
     {% for row in rows %}
       <tr>
+        <td><b>{{ row.row_number }}</b></td>
         <td>{{ row.part.part_number }}</td>
         <td>{{ row.part.description|default:"-- --" }}</td>
         <td>{{ row.sap_location.code }}</td>

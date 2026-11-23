@@ -2,6 +2,7 @@ from count.models import CountRecord
 from django.db.models import Sum
 from decimal import Decimal
 from variance.models import CycleVariance
+from site_setting.models import SAPLocation
 
 
 def create_variance(sap_book_ref, count_ref):
@@ -9,15 +10,34 @@ def create_variance(sap_book_ref, count_ref):
         return
     cycle = sap_book_ref.cycle if sap_book_ref else count_ref.cycle if count_ref else None
     plant = cycle.plant if cycle else None
-    sap_location = sap_book_ref.sap_location if sap_book_ref else count_ref.sap_location if count_ref else None
+    
+    sap_location = None
+    sap_code = None
+    sap_department = None
+    sap_inventory_type = None
+    
+    if sap_book_ref:
+        sap_location = sap_book_ref.sap_location
+        sap_code = sap_location.code if sap_location else None
+        sap_department = sap_location.department if sap_location else None
+        sap_inventory_type = sap_location.inventory_type if sap_location else None
+    elif count_ref:
+        sap_location = count_ref.sap_location
+        sap_code = sap_location.code if sap_location else None
+        sap_department = sap_location.department if sap_location else None
+        sap_inventory_type = sap_location.inventory_type if sap_location else None
+    
     sap_qty = sap_book_ref.quantity if sap_book_ref else 0
     count_qty = Decimal(count_ref.quantity) if count_ref else 0
     part = sap_book_ref.part if sap_book_ref else count_ref.part if count_ref else None
+    
     CycleVariance.objects.create(
         plant=plant,
         cycle=cycle,
         part=part,
-        sap_location=sap_location,
+        sap_code=sap_code,
+        sap_department=sap_department,
+        sap_inventory_type=sap_inventory_type or "",
         sap_quantity=sap_qty,
         count_quantity=count_qty,
         variance_quantity=count_qty - sap_qty,
@@ -27,11 +47,15 @@ def create_variance(sap_book_ref, count_ref):
 
 
 def update_variance_sap(sap_ref):
+    sap_location = sap_ref.sap_location
+    sap_code = sap_location.code if sap_location else None
+    sap_department = sap_location.department if sap_location else None
+    
     var_ref = CycleVariance.objects.filter(
         plant=sap_ref.cycle.plant,
         cycle=sap_ref.cycle,
         part=sap_ref.part,
-        sap_location=sap_ref.sap_location,
+        sap_code=sap_code,
     ).first()
 
     if var_ref:
@@ -45,7 +69,7 @@ def update_variance_sap(sap_ref):
         var_qty = count_sum - sap_qty
         var_ref.sap_quantity = sap_qty
         var_ref.variance_quantity = var_qty
-        if sap_ref.sap_inventory == "CS":
+        if sap_location.inventory_type == "CONSIGNED":
             var_ref.variance_value = 0
         else:
             var_ref.variance_value = var_qty * var_ref.map_price
@@ -59,11 +83,14 @@ def update_variance_sap(sap_ref):
 
 
 def update_variance_count(count_ref):
+    sap_location = count_ref.sap_location
+    sap_code = sap_location.code if sap_location else None
+    
     var_ref = CycleVariance.objects.filter(
         plant=count_ref.cycle.plant,
         cycle=count_ref.cycle,
         part=count_ref.part,
-        sap_location=count_ref.sap_location,
+        sap_code=sap_code,
     ).first()
 
     if var_ref:
@@ -76,7 +103,7 @@ def update_variance_count(count_ref):
         var_ref.count_quantity = count_sum
         var_qty = count_sum - (var_ref.sap_quantity or 0)
         var_ref.variance_quantity = var_qty
-        if count_ref.sap_location.inventory_type == "CS":
+        if sap_location.inventory_type == "CONSIGNED":
             var_ref.variance_value = 0
         else:
             var_ref.variance_value = var_qty * var_ref.map_price
@@ -91,11 +118,14 @@ def update_variance_count(count_ref):
 
 
 def delete_variance_count(count_ref):
+    sap_location = count_ref.sap_location
+    sap_code = sap_location.code if sap_location else None
+    
     var_ref = CycleVariance.objects.filter(
         plant=count_ref.cycle.plant,
         cycle=count_ref.cycle,
         part=count_ref.part,
-        sap_location=count_ref.sap_location,
+        sap_code=sap_code,
     ).first()
 
     if var_ref:
@@ -108,7 +138,7 @@ def delete_variance_count(count_ref):
         var_ref.count_quantity = count_sum
         var_qty = count_sum - (var_ref.sap_quantity or 0)
         var_ref.variance_quantity = var_qty
-        if count_ref.sap_location.inventory_type == "CS":
+        if sap_location.inventory_type == "CONSIGNED":
             var_ref.variance_value = 0
         else:
             var_ref.variance_value = var_qty * var_ref.map_price

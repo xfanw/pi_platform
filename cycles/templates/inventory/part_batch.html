@@ -44,10 +44,11 @@
 <section class="card bulk-preview-card">
   <div class="table-section-head"><div><h2>Row actions</h2><p class="mut">System Access No means roster only. Passwords are never read from or stored in this workbook.</p></div></div>
   <div class="scroll"><table class="bulk-preview-table">
-    <thead><tr><th>Part Number</th><th>Description</th><th>MAP$</th><th>BU</th><th>Validation</th></tr></thead>
+    <thead><tr><th>Row</th><th>Part Number</th><th>Description</th><th>MAP$</th><th>BU</th><th>Validation</th></tr></thead>
     <tbody>
     {% for row in rows %}
       <tr class="{% if not row.is_valid %}bulk-error-row{% endif %}">
+        <td><b>{{ row.row_number }}</b></td>
         <td>{{ row.part_number|default:"-- --" }}</td>
         <td>{{ row.description|default:"-- --" }}</td>
         <td>{{ row.price|remove_trailing_zeros }}</td>

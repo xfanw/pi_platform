@@ -72,7 +72,9 @@ def part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
             workbook.close()
             return "error", f"Headers do NOT match, please download the latest template. "
 
+        row_number = 1
         for row in rows:
+            row_number += 1
             if row[0] or row[1] or row[2] or row[3]:
                 curr_error = []
                 curr_valid = True
@@ -101,6 +103,7 @@ def part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                         validation_errors=curr_error,
                         is_valid=curr_valid,
                         batch=batch,
+                        row_number=row_number,
                         created_by=actor,
                         updated_by=actor,
                     )

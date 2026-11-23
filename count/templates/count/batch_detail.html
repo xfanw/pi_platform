@@ -45,7 +45,7 @@
     <tbody>
     {% for row in rows %}
       <tr class="{% if not row.is_valid %}bulk-error-row{% endif %}">
-        <td>{{ forloop.counter }}</td>
+        <td><b>{{ row.row_number }}</b></td>
         <td>{% if row.part %}<b class="mono">{{ row.part.part_number }}</b>{% else %}<b class="mono text-danger">{{ row.raw_part_number|default:"--" }}</b>{% endif %}</td>
         <td><span class="role-tag">{{ row.sap_location.code|default:"--" }}</span></td>
         <td>{{ row.physical_location.name|default:"--" }}</td>

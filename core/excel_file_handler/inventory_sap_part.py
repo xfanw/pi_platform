@@ -70,7 +70,9 @@ def sap_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
         curr_valid = True
         seen = set()
         records = []
-        for line_no, row in enumerate(rows, start=2):
+        line_no = 1
+        for row in rows:
+            line_no += 1
             row = tuple(row) + (None,) * (3 - len(row))
             if not any(value not in (None, "") for value in row[:3]):
                 continue
@@ -110,7 +112,7 @@ def sap_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                     line_errors.append("Duplicated PN and SAP Location in this file")
                 seen.add(key)
 
-            records.append((part, location, quantity, line_errors, curr_valid))
+            records.append((part, location, quantity, line_errors, curr_valid, line_no))
         if not records:
             return "error", "File is empty."
 
@@ -134,10 +136,11 @@ def sap_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
                     quantity=quantity,
                     validation_errors=validation_errors,
                     is_valid=is_valid,
+                    row_number=row_number,
                     created_by=actor,
                     updated_by=actor,
                 )
-                for part, location, quantity, validation_errors, is_valid in records
+                for part, location, quantity, validation_errors, is_valid, row_number in records
             ]
         )
     except Exception as e:

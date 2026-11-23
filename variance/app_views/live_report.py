@@ -64,11 +64,11 @@ def variance_live_report(request):
         context["search"] = search
     if selected_department:
         has_search = True
-        curr_var_set = curr_var_set.filter(sap_location__department__icontains=selected_department)
+        curr_var_set = curr_var_set.filter(sap_department__icontains=selected_department)
         context["selected_department"] = selected_department
     if selected_sap:
         has_search = True
-        curr_var_set = curr_var_set.filter(sap_location__code__icontains=selected_sap)
+        curr_var_set = curr_var_set.filter(sap_code__icontains=selected_sap)
         context["selected_sap"] = selected_sap
     if selected_bu:
         has_search = True
@@ -76,7 +76,7 @@ def variance_live_report(request):
         context["selected_bu"] = selected_bu
     if selected_type:
         has_search = True
-        curr_var_set = curr_var_set.filter(sap_location__inventory_type__icontains=selected_type)
+        curr_var_set = curr_var_set.filter(sap_inventory_type__icontains=selected_type)
         context["selected_type"] = selected_type
     if show_var_only != "all":
         curr_var_set = curr_var_set.exclude(variance_quantity=0)
@@ -137,7 +137,7 @@ def get_comment(request):
         my_sap_list = my_sap_loc(curr_user, plant)
         var_set = var_set.filter(sap_location__code__in=my_sap_list)
 
-    var_sap_code = list(var_set.exclude(variance_quantity=0).values_list("sap_location__code", flat=True).distinct())
+    var_sap_code = list(var_set.exclude(variance_quantity=0).values_list("sap_code", flat=True).distinct())
     if not var_sap_code:
         return json_error("No variance found for the given part number in your scope.")
 
@@ -145,16 +145,15 @@ def get_comment(request):
     json_context["var_sap_code"] = var_sap_code
     review_rows = []
     for sap_code in var_sap_code:
-        curr_sap = SAPLocation.objects.filter(code=sap_code).first()
-        curr_var = var_set.filter(sap_location__code=sap_code).first()
+        curr_var = var_set.filter(sap_code=sap_code).first()
         curr_res = curr_var.resolutions.first()
         curr_comments = curr_var.comments.order_by("created_at").values("created_by__username", "body", "created_at")
 
         review_rows.append(
             {
                 "sap_code": sap_code,
-                "sap_department": curr_sap.department if curr_sap else "",
-                "sap_inventory": curr_sap.inventory_type if curr_sap else "",
+                "sap_department": curr_var.sap_department,
+                "sap_inventory": curr_var.sap_inventory_type,
                 "book_count": float(curr_var.sap_quantity),
                 "count_value": float(curr_var.count_quantity),
                 "variance_quantity": float(curr_var.variance_quantity),
@@ -226,7 +225,7 @@ def post_batch_create(request):
             .exclude(Q(status="Posted") | Q(status="Not Post"))
         )
         variances = list(
-            var_set.select_related("part", "sap_location").annotate(
+            var_set.select_related("part").annotate(
                 has_included_batch=Exists(
                     PostBatchLine.objects.exclude(batch__status="Cancelled").filter(variance_id=OuterRef("pk"), is_included=True)
                 ),
@@ -240,7 +239,7 @@ def post_batch_create(request):
             if var.has_included_batch:
                 messages.error(
                     request,
-                    f"Variance for part '{var.part.part_number}' in SAP {var.sap_location.code} already exists in a post batch.",
+                    f"Variance for part '{var.part.part_number}' in SAP {var.sap_code} already exists in a post batch.",
                 )
                 return redirect("variance:variance_live_report")
 
@@ -253,7 +252,7 @@ def post_batch_create(request):
         missing_variances = [var for var in variances if var.first_resolution_id is None]
         if missing_variances:
             VarianceResolution.objects.bulk_create(
-                [VarianceResolution(variance=var, reason=reason, status="To Post", created_by=curr_user) for var in missing_variances]
+                [VarianceResolution(variance=var, reason=reason, status="To Post", created_by=curr_user, decided_by=curr_user, decided_at=datetime.now().astimezone()) for var in missing_variances]
             )
             resolution_ids = dict(
                 VarianceResolution.objects.filter(variance__in=missing_variances).order_by("-pk").values_list("variance_id", "pk")
@@ -276,10 +275,12 @@ def post_batch_create(request):
             ]
         )
 
+        # Update reason for all resolutions if provided
         VarianceResolution.objects.filter(variance__in=var_set).filter(
             Q(reason="") | Q(reason__isnull=True),
         ).update(reason=reason)
 
+        # Sync status: update both VarianceResolution and CycleVariance to "To Post"
         VarianceResolution.objects.filter(variance__in=var_set).update(status="To Post")
         var_set.update(status="To Post")
     messages.success(request, f"Post batch {batch_name} created successfully.")

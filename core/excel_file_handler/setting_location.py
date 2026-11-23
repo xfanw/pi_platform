@@ -92,7 +92,9 @@ def location_batch_upload(curr_file, sheet_name, *, plant, actor):
     for sap in SAPLocation.objects.filter(plant=plant).order_by("pk"):
         sap_map.setdefault(sap.code, sap)
 
+    row_number = 1
     for row in rows:
+        row_number += 1
         if row[0] or row[1]:
             curr_error = []
             curr_valid = True
@@ -118,6 +120,7 @@ def location_batch_upload(curr_file, sheet_name, *, plant, actor):
                     name=curr_name,
                     validation_errors=curr_error,
                     is_valid=curr_valid,
+                    row_number=row_number,
                 )
             )
     try:
@@ -248,7 +251,9 @@ def sub_location_batch_upload(curr_file, sheet_name, *, plant, actor):
     for physical in PhysicalLocation.objects.filter(plant=plant).order_by("pk"):
         physical_map.setdefault((physical.sap_location_id, physical.name), physical)
 
+    row_number = 1
     for row in rows:
+        row_number += 1
         if row[0] or row[1] or row[2]:
             curr_error = []
             curr_valid = True
@@ -283,6 +288,7 @@ def sub_location_batch_upload(curr_file, sheet_name, *, plant, actor):
                     name=curr_name,
                     validation_errors=curr_error,
                     is_valid=curr_valid,
+                    row_number=row_number,
                 )
             )
     try:
