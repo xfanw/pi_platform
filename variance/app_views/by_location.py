@@ -6,7 +6,6 @@ from django.db.models.functions import Abs
 
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
-from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PICycle
 from variance.models import CycleVariance
 
@@ -58,13 +57,43 @@ def variance_by_location(request):
                 net_var_percent=Case(
                     When(book_value=0, count_value=0, then=Value(100)),
                     When(book_value=0, then=Value(0)),
-                    default=(1 - Abs(F("net_variance") / F("book_value"))) * 100,
+                    default=(
+                        1
+                        - Case(
+                            When(net_variance__gte=0, book_value__gte=0, then=Case(
+                                When(net_variance__lte=F("book_value"), then=F("net_variance") / F("book_value")),
+                                default=F("book_value") / F("net_variance")
+                            )),
+                            When(net_variance__lt=0, book_value__lt=0, then=Case(
+                                When(net_variance__gte=F("book_value"), then=-F("net_variance") / (-F("book_value"))),
+                                default=(-F("book_value")) / (-F("net_variance"))
+                            )),
+                            When(net_variance__gte=0, book_value__lt=0, then=F("net_variance") / (-F("book_value"))),
+                            default=(-F("net_variance")) / F("book_value")
+                        )
+                    )
+                    * 100,
                     output_field=DecimalField(),
                 ),
                 abs_var_percent=Case(
                     When(book_value=0, abs_variance=0, then=Value(100)),
                     When(book_value=0, then=Value(0)),
-                    default=(1 - F("abs_variance") / F("book_value")) * 100,
+                    default=(
+                        1
+                        - Case(
+                            When(abs_variance__gte=0, book_value__gte=0, then=Case(
+                                When(abs_variance__lte=F("book_value"), then=F("abs_variance") / F("book_value")),
+                                default=F("book_value") / F("abs_variance")
+                            )),
+                            When(abs_variance__lt=0, book_value__lt=0, then=Case(
+                                When(abs_variance__gte=F("book_value"), then=-F("abs_variance") / (-F("book_value"))),
+                                default=(-F("book_value")) / (-F("abs_variance"))
+                            )),
+                            When(abs_variance__gte=0, book_value__lt=0, then=F("abs_variance") / (-F("book_value"))),
+                            default=(-F("abs_variance")) / F("book_value")
+                        )
+                    )
+                    * 100,
                     output_field=DecimalField(),
                 ),
             )
@@ -84,9 +113,8 @@ def variance_by_location(request):
         accuracy_totals = defaultdict(int)
         sap_codes = [item["sap_code"] for item in cs_variance]
         if sap_codes:
-            accuracy_rows = (
-                CycleVariance.objects.filter(cycle=active_cycle, plant=plant, sap_code__in=sap_codes)
-                .only("sap_code", "sap_quantity", "count_quantity")
+            accuracy_rows = CycleVariance.objects.filter(cycle=active_cycle, plant=plant, sap_code__in=sap_codes).only(
+                "sap_code", "sap_quantity", "count_quantity"
             )
             for variance in accuracy_rows.iterator():
                 accuracy_totals[variance.sap_code] += variance.qty_accuracy

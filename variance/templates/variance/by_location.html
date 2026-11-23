@@ -32,8 +32,8 @@
   <tr class="location-type-group"><td colspan="12">TK · FII Owned</td></tr>
   {% for row in tk_variance %}
   <tr>
-    <td><a href="{% url 'core:home' %}?sap_location={{ row.sap_location__code|urlencode }}&show=all"><b>{{ row.sap_location__code }}</b></a></td>
-    <td>{{ row.sap_location__department }}</td>
+    <td><a href="{% url 'variance:variance_live_report' %}?sap_location={{ row.sap_code|urlencode }}&show=all"><b>{{ row.sap_code }}</b></a></td>
+    <td>{{ row.sap_department }}</td>
     <td><span class="chip">TK</span></td>
     <td class="num">{{ row.total_part_count|intcomma }}</td>
     <td class="num">{{ row.var_part_count|intcomma }}</td>
@@ -52,8 +52,8 @@
 <tr class="location-type-group"><td colspan="12">CS · Consigned</td></tr>
 {% for row in cs_variance %}
 <tr>
-  <td><a href="{% url 'core:home' %}?sap_location={{ row.sap_location__code|urlencode }}&show=all"><b>{{ row.sap_location__code }}</b></a></td>
-  <td>{{ row.sap_location__department }}</td>
+  <td><a href="{% url 'variance:variance_live_report' %}?sap_location={{ row.sap_code|urlencode }}&show=all"><b>{{ row.sap_code }}</b></a></td>
+  <td>{{ row.sap_department }}</td>
   <td><span class="chip corrected">CS</span></td>
   <td class="num">{{ row.part_count|intcomma }}</td>
   <td class="num">{{ row.variance_part_count|intcomma }}</td>
