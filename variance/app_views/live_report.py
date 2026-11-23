@@ -1,12 +1,13 @@
 from access_control.app_functions import is_global_manager, is_plant_manager, my_sap_loc
 from core._imports_for_views import *
+from core.app_functions import http_excel
 from core.context_processors import get_basic_info
 from django.db import transaction
 from django.db.models import Exists, F, OuterRef, Subquery
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.models import PICycle
-from site_setting.models import SAPLocation
 from variance.app_functions.report import get_live_var_context, get_part_sap_matrix
+from variance.app_functions.excel_export import variance_export_excel_bytes
 from variance.models import CycleVariance, PostBatch, PostBatchLine, VarianceResolution
 
 PERMISSION = "Variance.Live Variance Report"
@@ -252,7 +253,17 @@ def post_batch_create(request):
         missing_variances = [var for var in variances if var.first_resolution_id is None]
         if missing_variances:
             VarianceResolution.objects.bulk_create(
-                [VarianceResolution(variance=var, reason=reason, status="To Post", created_by=curr_user, decided_by=curr_user, decided_at=datetime.now().astimezone()) for var in missing_variances]
+                [
+                    VarianceResolution(
+                        variance=var,
+                        reason=reason,
+                        status="To Post",
+                        created_by=curr_user,
+                        decided_by=curr_user,
+                        decided_at=datetime.now().astimezone(),
+                    )
+                    for var in missing_variances
+                ]
             )
             resolution_ids = dict(
                 VarianceResolution.objects.filter(variance__in=missing_variances).order_by("-pk").values_list("variance_id", "pk")
@@ -285,3 +296,64 @@ def post_batch_create(request):
         var_set.update(status="To Post")
     messages.success(request, f"Post batch {batch_name} created successfully.")
     return redirect("variance:variance_live_report")
+
+
+@login_required
+def variance_export(request):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to create post batches. {msg}"))
+        return redirect("core:home")
+
+    active_cycle = context["cycle_ref"]
+    if not active_cycle:
+        return json_error("No active cycle found for the plant.")
+
+    post_data = request.GET
+    selected_department = post_data.get("department", "").strip()
+    selected_sap = post_data.get("sap_location", "").strip().upper()
+    selected_bu = post_data.get("business_unit", "").strip()
+    selected_type = post_data.get("inventory_type", "").strip().upper()
+    search = post_data.get("search", "").strip()
+    show_var_only = post_data.get("show", "")
+
+    curr_var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+    if search:
+        curr_var_set = curr_var_set.filter(Q(part__part_number__icontains=search) | Q(part__description__icontains=search))
+    if selected_department:
+        curr_var_set = curr_var_set.filter(sap_department__icontains=selected_department)
+    if selected_sap:
+        curr_var_set = curr_var_set.filter(sap_code__icontains=selected_sap)
+    if selected_bu:
+        curr_var_set = curr_var_set.filter(part__business_unit__icontains=selected_bu)
+    if selected_type:
+        curr_var_set = curr_var_set.filter(sap_inventory_type__icontains=selected_type)
+    if show_var_only != "all":
+        curr_var_set = curr_var_set.exclude(variance_quantity=0)
+
+    excel_context = get_live_var_context(curr_var_set)
+    excel_context["curr_var_set"] = curr_var_set
+
+    # Get locations for matrix
+    tk_locations = list(
+        CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True, sap_location__inventory_type="FII_OWNED")
+        .values(code=F("sap_location__code"), department=F("sap_location__department"))
+        .order_by("sap_location__department", "sap_location__code")
+    )
+    cs_locations = list(
+        CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True, sap_location__inventory_type="CONSIGNED")
+        .values(code=F("sap_location__code"), department=F("sap_location__department"))
+        .order_by("sap_location__department", "sap_location__code")
+    )
+
+    # Generate Excel file
+    excel_bytes = variance_export_excel_bytes(excel_context, curr_var_set, tk_locations, cs_locations)
+
+    return http_excel(excel_bytes, f"{active_cycle.name}_Variance")

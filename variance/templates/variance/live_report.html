@@ -5,7 +5,8 @@
 {% block body %}
 <div class="page-heading"><div><h1>Live Variance Report</h1><p class="page-sub">Live variance compares Count Results with SAP Book Inventory. Audit corrections change this report only after approval and application.</p></div>
   {% comment %} <div class="page-actions"><a class="btn btn-sm btn-outline-primary" href="{% url 'portal:post-batches' %}">Post Batches</a><a class="btn btn-sm btn-outline-primary" href="{% url 'portal:variance-export' %}?{{ request.GET.urlencode }}">Export to Excel</a></div> {% endcomment %}
-  <div class="page-actions"><a class="btn btn-sm btn-outline-primary" href="{% url 'core:home' %}">Post Batches</a><a class="btn btn-sm btn-outline-primary" href="{% url 'core:home' %}?{{ request.GET.urlencode }}">Export to Excel</a></div>
+  <div class="page-actions"><a class="btn btn-sm btn-outline-primary" href="{% url 'variance:post_batches' %}">Post Batches</a>
+  <a class="btn btn-sm btn-outline-primary" href="{% url 'variance:variance_export' %}?{{ request.GET.urlencode }}">Export to Excel</a></div>
 </div>
 {% if is_closed %}<div class="flash warn">Closed PI · Read-only historical position. Count and variance remain available for review.</div>{% endif %}
 

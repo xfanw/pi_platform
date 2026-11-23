@@ -4,6 +4,7 @@ from django.db.models.functions import Abs
 
 def get_live_var_context(curr_var_set):
     context = {
+        "cycle_name": "",
         "tk_book_value": 0,
         "tk_count_value": 0,
         "tk_net_val": 0,
@@ -16,11 +17,13 @@ def get_live_var_context(curr_var_set):
 
     if curr_var_set is None:
         return context
+    cycle_name = curr_var_set.first().cycle.name
 
-    total_values = curr_var_set.aggregate(
-        book_value=Sum(F("sap_quantity") * F("map_price")),
-        net_variance=Sum("variance_value"),
-    )
+    context["cycle_name"] = cycle_name
+    # total_values = curr_var_set.aggregate(
+    #     book_value=Sum(F("sap_quantity") * F("map_price")),
+    #     net_variance=Sum("variance_value"),
+    # )
     tk_values = curr_var_set.filter(sap_inventory_type="FII_OWNED").aggregate(
         book_value=Sum(F("sap_quantity") * F("map_price")),
         count_value=Sum(F("count_quantity") * F("map_price")),
@@ -37,9 +40,17 @@ def get_live_var_context(curr_var_set):
     context["tk_book_value"] = tk_book_value
     context["tk_count_value"] = tk_count_value
     context["tk_net_val"] = tk_net_variance
-    context["tk_net_acc"] = (1 - abs(tk_net_variance / tk_book_value)) * 100 if tk_book_value else 0 if tk_count_value else 100
+    context["tk_net_acc"] = (
+        (1 - min(abs(tk_net_variance), abs(tk_book_value)) / max(abs(tk_net_variance), abs(tk_book_value))) * 100
+        if tk_book_value and tk_net_variance
+        else 0 if tk_count_value else 100
+    )
     context["tk_abs_val"] = tk_abs_variance
-    context["tk_abs_acc"] = (1 - tk_abs_variance / tk_book_value) * 100 if tk_book_value else 0 if tk_abs_variance else 100
+    context["tk_abs_acc"] = (
+        (1 - min(tk_abs_variance, abs(tk_book_value)) / max(tk_abs_variance, abs(tk_book_value))) * 100
+        if tk_book_value and tk_abs_variance
+        else 0 if tk_abs_variance else 100
+    )
     context["cs_abs_qty"] = cs_variances.aggregate(abs_qty=Sum(Abs("variance_quantity")))["abs_qty"] or 0
 
     accuracy_total = 0
