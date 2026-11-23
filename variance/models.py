@@ -28,7 +28,7 @@ class CycleVariance(models.Model):
         indexes = [
             models.Index(fields=["cycle", "plant"], name="cycle_variance_cycle_plant_idx"),
         ]
-        constraints = [models.UniqueConstraint(fields=["cycle", "sap_code", "part"], name="uq_variance_cycle_sap_code_part_grain")]
+        # constraints = [models.UniqueConstraint(fields=["cycle", "sap_code", "part"], name="uq_variance_cycle_sap_code_part_grain")]
 
     @property
     def inventory_type(self):

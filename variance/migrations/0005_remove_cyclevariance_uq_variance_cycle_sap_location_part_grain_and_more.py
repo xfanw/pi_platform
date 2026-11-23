@@ -33,13 +33,6 @@ class Migration(migrations.Migration):
             field=models.CharField(default=0, max_length=15),
             preserve_default=False,
         ),
-        migrations.AddConstraint(
-            model_name="cyclevariance",
-            constraint=models.UniqueConstraint(
-                fields=("cycle", "sap_code", "part"),
-                name="uq_variance_cycle_sap_code_part_grain",
-            ),
-        ),
         migrations.RemoveField(
             model_name="cyclevariance",
             name="sap_location",
