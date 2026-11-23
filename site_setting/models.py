@@ -149,6 +149,7 @@ class TempLocationMain(TimeStampedModel):
 
 
 class TempLocationDetail(models.Model):
+    row_number = models.PositiveIntegerField()
     batch = models.ForeignKey(TempLocationMain, on_delete=models.CASCADE)
     plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
     sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, null=True, blank=True)
@@ -173,6 +174,7 @@ class TempSubLocationMain(TimeStampedModel):
 
 
 class TempSubLocationDetail(models.Model):
+    row_number = models.PositiveIntegerField()
     batch = models.ForeignKey(TempSubLocationMain, on_delete=models.CASCADE)
     plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
     physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.CASCADE, null=True, blank=True)

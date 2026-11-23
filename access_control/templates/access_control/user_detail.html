@@ -62,11 +62,7 @@
     <div class="row mt-3">
       <div class='col-md-3'><label>Valid From <span class="mut">(optional)</span></label><input type='datetime-local' id='valid_from' name='valid_from' class='form-control'></div>
       <div class='col-md-3'><label>Valid To <span class="mut">(optional)</span></label><input type='datetime-local' id='valid_to' name='valid_to' class='form-control'></div>
-      {% comment %} <div  class='col-md-3' id="methodScope" hidden><label>Count Methods <span class="mut">(blank = all)</span></label><div class="method-checks">
-        {% for value, label in entry_methods %}<label><input type="checkbox" name="count_methods" value="{{ value }}"> {{ label }}</label>{% endfor %}
-      </div><small>Only Data Entry uses Count Method scope.</small></div>
-      <div class="role-explainer"><span>Selected Role</span><b id="roleName">Select a role</b><small id="roleDescription">Role permissions combine with this scope.</small></div> {% endcomment %}
-      <div class='col-md-3'><label>Action</label><button class='btn btn-primary' type="submit">Add Assignment</button></div>
+      <div class='col-md-3'><label>Action</label><button class='btn btn-primary' type="submit">Save</button></div>
     </div>
   </form>
 </section>

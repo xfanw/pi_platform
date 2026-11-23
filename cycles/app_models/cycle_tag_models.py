@@ -38,6 +38,7 @@ class TempCycleTagMain(TimeStampedModel):
 
 
 class TempCycleTagDetail(TimeStampedModel):
+    row_number = models.PositiveIntegerField()
     batch = models.ForeignKey(TempCycleTagMain, on_delete=models.PROTECT)
     plant = models.ForeignKey(Plant, on_delete=models.PROTECT)
     cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)

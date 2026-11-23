@@ -42,6 +42,7 @@ class TempPartMain(TimeStampedModel):
 
 
 class TempPartDetail(TimeStampedModel):
+    row_number = models.PositiveIntegerField()
     batch = models.ForeignKey(TempPartMain, on_delete=models.PROTECT)
     cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
     part_number = models.CharField(max_length=80)
@@ -91,6 +92,7 @@ class TempSAPPartMain(TimeStampedModel):
 
 
 class TempSAPPartDetail(TimeStampedModel):
+    row_number = models.PositiveIntegerField()
     batch = models.ForeignKey(TempSAPPartMain, on_delete=models.PROTECT)
     cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
     part = models.ForeignKey(PartMaster, on_delete=models.PROTECT, null=True, blank=True)
@@ -130,6 +132,7 @@ class TempExPartMain(TimeStampedModel):
 
 
 class TempExPartDetail(TimeStampedModel):
+    row_number = models.PositiveIntegerField()
     batch = models.ForeignKey(TempExPartMain, on_delete=models.PROTECT)
     cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
     sap_location = models.ForeignKey(SAPLocation, null=True, blank=True, on_delete=models.PROTECT)

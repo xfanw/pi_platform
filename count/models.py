@@ -38,6 +38,7 @@ class CountLoadBatch(TimeStampedModel):
 
 
 class TempCountLoadDetail(TimeStampedModel):
+    row_number = models.PositiveIntegerField()
     batch = models.ForeignKey(CountLoadBatch, null=True, blank=True, on_delete=models.CASCADE)
     part = models.ForeignKey(PartMaster, null=True, blank=True, on_delete=models.CASCADE)
     raw_part_number = models.CharField(max_length=80)
@@ -53,8 +54,6 @@ class TempCountLoadDetail(TimeStampedModel):
 
 
 class CountRecord(models.Model):
-    # idempotency_key = models.CharField(max_length=128, unique=True)  # ?
-    # request_fingerprint = models.CharField(max_length=64)  # ?
     part = models.ForeignKey(PartMaster, on_delete=models.CASCADE, related_name="count_records")
     cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="count_records")
     batch = models.ForeignKey(CountLoadBatch, null=True, blank=True, on_delete=models.SET_NULL)
@@ -66,7 +65,7 @@ class CountRecord(models.Model):
     tag_number = models.CharField(max_length=80, blank=True)
     quantity = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
     counter_name = models.CharField(max_length=160, blank=True)
-    # counter_employee_id = models.CharField(max_length=80, blank=True)
+    initial_count_value = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
     entered_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="entered_count_records")
     entered_at = models.DateTimeField(null=True)
     accepted_at = models.DateTimeField(null=True)
@@ -94,9 +93,6 @@ class CountRecord(models.Model):
 
 
 class CountIntakeException(TimeStampedModel):
-    # exception_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    # idempotency_key = models.CharField(max_length=128, unique=True)
-    # request_fingerprint = models.CharField(max_length=64)
     cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="count_exceptions")
     batch = models.ForeignKey(CountLoadBatch, null=True, blank=True, on_delete=models.CASCADE, related_name="exceptions")
     source = models.CharField(max_length=16)  # COUNT_SOURCE
@@ -172,7 +168,6 @@ class CycleTagDetail(TimeStampedModel):
 
 
 class CountCorrection(TimeStampedModel):
-    # correction_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     count_record = models.ForeignKey(CountRecord, on_delete=models.CASCADE, related_name="corrections")
     corrected_part = models.ForeignKey(PartMaster, null=True, blank=True, on_delete=models.CASCADE, related_name="count_corrections")
     corrected_quantity = models.DecimalField(
