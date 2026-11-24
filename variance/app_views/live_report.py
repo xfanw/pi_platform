@@ -43,7 +43,7 @@ def variance_live_report(request):
         .values(code=F("sap_location__code"), department=F("sap_location__department"))
         .order_by("sap_location__department", "sap_location__code")
     )
-    context["department_list"] = sorted(set({dept for _, dept in cycle_sap_locations}))
+    context["department_list"] = sorted(set({dept["department"] for dept in cycle_sap_locations}))
     context["sap_list"] = cycle_sap_locations
     context["bu_list"] = sorted(
         CycleVariance.objects.filter(cycle=active_cycle, plant=plant).values_list("part__business_unit", flat=True).distinct()

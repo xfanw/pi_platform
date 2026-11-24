@@ -118,3 +118,42 @@ function show_comments(part_number) {
         },
     }); // end ajax
 }
+
+function filter_by_department(department) {
+    const $sapLocationSelect = $('select[name="sap_location"]');
+    const allOptions = $sapLocationSelect.find("option");
+
+    // Show all options first
+    allOptions.show();
+
+    if (department === "") {
+        // Show all SAP locations when "All" is selected
+        return;
+    }
+
+    // Hide options that don't match the selected department
+    allOptions.each(function () {
+        const $option = $(this);
+        const value = $option.val();
+
+        // Keep the "All" option visible
+        if (value === "") {
+            return;
+        }
+
+        // Check if this option belongs to the selected department
+        const optionText = $option.text(); // Format: "CODE · DEPARTMENT"
+        const parts = optionText.split(" · ");
+        const optionDepartment = parts.length > 1 ? parts[1].trim() : "";
+
+        if (optionDepartment !== department) {
+            $option.hide();
+        }
+    });
+
+    // Reset SAP location selection if current selection is hidden
+    const $selectedOption = $sapLocationSelect.find("option:selected");
+    if ($selectedOption.is(":hidden")) {
+        $sapLocationSelect.val("");
+    }
+}

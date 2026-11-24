@@ -1,8 +1,9 @@
 from django.urls import path
-from . import views
+
+from audit.app_views.planning import audit_planning
 
 app_name = "audit"
 
 urlpatterns = [
-    path("", views.index, name="audit_index"),
+    path("audit_planning", audit_planning, name="audit_planning"),
 ]

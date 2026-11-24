@@ -92,37 +92,38 @@
     </div>
     {% endif %}
 
-    {% if "Book Inventary" in page_access_group %}
-    <div class="sec">Book Inventory</div>
-    <div class="nav-items">
-      {% if "Book Inventary.PN List" in page_access_list %}<a href="{% url 'cycles:part_setup' %}" class="{% if request.resolver_match.url_name == 'part_setup' or request.resolver_match.url_name == 'part_batch' %}on{% endif %}">PN List</a>{% endif %}
-      {% if "Book Inventary.SAP Inventary" in page_access_list %}<a href="{% url 'cycles:sap_part_setup' %}" class="{% if request.resolver_match.url_name == 'sap_part_setup' or request.resolver_match.url_name == 'sap_part_batch' %}on{% endif %}">SAP Inventory</a>{% endif %}
-      {% if "Book Inventary.Exclude PN List" in page_access_list %}<a href="{% url 'cycles:ex_part_setup' %}" class="{% if request.resolver_match.url_name == 'ex_part_setup' or request.resolver_match.url_name == 'ex_part_batch'%}on{% endif %}">Exclude PN List</a>{% endif %}
-    </div>
-    {% endif %}
-
-    {% if "Count" in page_access_group %}
-    <div class="sec">Count</div>
-    <div class="nav-items">
-      {% if "Count.Manual Key-In" in page_access_list %}<a href="{% url 'count:count_manual' %}" class="{% if request.resolver_match.url_name == 'count_manual' %}on{% endif %}">Manual Key-in (No Tag)</a>{% endif %}
-      {% if "Count.Tag Key-In" in page_access_list %}<a href="{% url 'count:count_tag' %}" class="{% if request.resolver_match.url_name == 'count_tag' %}on{% endif %}">Tag Key-in</a>{% endif %}
-      {% if "Count.Count Result Upload" in page_access_list %}<a href="{% url 'count:count_upload' %}" class="{% if request.resolver_match.url_name == 'count_upload' or request.resolver_match.url_name == 'count_batch' %}on{% endif %}">Count Result Upload</a>{% endif %}
-      {% comment %} {% if "Count.WMS Feed" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'count-wms' %}on{% endif %}">WMS Feed</a>{% endif %}
-      {% if "Count.Virtual Tag Scan" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'count-virtual-tag' or request.resolver_match.url_name == 'count-virtual-tag-detail' %}on{% endif %}">Virtual Tag Scan</a>{% endif %} {% endcomment %}
-      {% if "Count.Count Results" in page_access_list %}<a href="{% url 'count:count_result' %}" class="{% if request.resolver_match.url_name == 'count_result' %}on{% endif %}">Count Results</a>{% endif %}
-      {% if "Count.Pending Station" in page_access_list %}<a href="{% url 'count:pending_station' %}" class="{% if request.resolver_match.url_name == 'pending_station' %}on{% endif %}">Pending Station{% if portal_pending_count %} <span class="badge">{{ portal_pending_count }}</span>{% endif %}</a>{% endif %}
-    </div>
-    {% endif %}
-
-    {% if "Audit" in page_access_group %}
-    <div class="sec">Audit</div>
-    <div class="nav-items">
-      {% if "Audit.Audit Pending" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'audit-planning' or request.resolver_match.url_name == 'audit-plan' or request.resolver_match.url_name == 'audit-results' %}on{% endif %}">Audit Planning</a>{% endif %}
-      {% if "Audit.Audit Correction" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'audit-corrections' %}on{% endif %}">Audit Corrections{% if audit_correction_count %}<span class="badge">{{ audit_correction_count }}</span>{% endif %}</a>{% endif %}
-      {% if "Audit.Audit Accuracy" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'audit-accuracy' %}on{% endif %}">Audit Accuracy</a>{% endif %}
-    </div>
-    {% endif %}
-
+    {% if cycle_ref %}
+      {% if "Book Inventary" in page_access_group %}
+      <div class="sec">Book Inventory</div>
+      <div class="nav-items">
+        {% if "Book Inventary.PN List" in page_access_list %}<a href="{% url 'cycles:part_setup' %}" class="{% if request.resolver_match.url_name == 'part_setup' or request.resolver_match.url_name == 'part_batch' %}on{% endif %}">PN List</a>{% endif %}
+        {% if "Book Inventary.SAP Inventary" in page_access_list %}<a href="{% url 'cycles:sap_part_setup' %}" class="{% if request.resolver_match.url_name == 'sap_part_setup' or request.resolver_match.url_name == 'sap_part_batch' %}on{% endif %}">SAP Inventory</a>{% endif %}
+        {% if "Book Inventary.Exclude PN List" in page_access_list %}<a href="{% url 'cycles:ex_part_setup' %}" class="{% if request.resolver_match.url_name == 'ex_part_setup' or request.resolver_match.url_name == 'ex_part_batch'%}on{% endif %}">Exclude PN List</a>{% endif %}
+      </div>
+      {% endif %}
+    
+      {% if "Count" in page_access_group %}
+      <div class="sec">Count</div>
+      <div class="nav-items">
+        {% if "Count.Manual Key-In" in page_access_list %}<a href="{% url 'count:count_manual' %}" class="{% if request.resolver_match.url_name == 'count_manual' %}on{% endif %}">Manual Key-in (No Tag)</a>{% endif %}
+        {% if "Count.Tag Key-In" in page_access_list %}<a href="{% url 'count:count_tag' %}" class="{% if request.resolver_match.url_name == 'count_tag' %}on{% endif %}">Tag Key-in</a>{% endif %}
+        {% if "Count.Count Result Upload" in page_access_list %}<a href="{% url 'count:count_upload' %}" class="{% if request.resolver_match.url_name == 'count_upload' or request.resolver_match.url_name == 'count_batch' %}on{% endif %}">Count Result Upload</a>{% endif %}
+        {% comment %} {% if "Count.WMS Feed" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'count-wms' %}on{% endif %}">WMS Feed</a>{% endif %}
+        {% if "Count.Virtual Tag Scan" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'count-virtual-tag' or request.resolver_match.url_name == 'count-virtual-tag-detail' %}on{% endif %}">Virtual Tag Scan</a>{% endif %} {% endcomment %}
+        {% if "Count.Count Results" in page_access_list %}<a href="{% url 'count:count_result' %}" class="{% if request.resolver_match.url_name == 'count_result' %}on{% endif %}">Count Results</a>{% endif %}
+        {% if "Count.Pending Station" in page_access_list %}<a href="{% url 'count:pending_station' %}" class="{% if request.resolver_match.url_name == 'pending_station' %}on{% endif %}">Pending Station{% if portal_pending_count %} <span class="badge">{{ portal_pending_count }}</span>{% endif %}</a>{% endif %}
+      </div>
+      {% endif %}
+      
+      {% if "Audit" in page_access_group %}
+      <div class="sec">Audit</div>
+      <div class="nav-items">
+        {% if "Audit.Audit Planning" in page_access_list %}<a href="{% url 'audit:audit_planning' %}" class="{% if request.resolver_match.url_name == 'audit_planning' or request.resolver_match.url_name == 'audit_plan' or request.resolver_match.url_name == 'audit_results' %}on{% endif %}">Audit Planning</a>{% endif %}
+        {% if "Audit.Audit Correction" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'audit-corrections' %}on{% endif %}">Audit Corrections{% if audit_correction_count %}<span class="badge">{{ audit_correction_count }}</span>{% endif %}</a>{% endif %}
+        {% if "Audit.Audit Accuracy" in page_access_list %}<a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'audit-accuracy' %}on{% endif %}">Audit Accuracy</a>{% endif %}
+      </div>
+      {% endif %}
+  {% endif %}
     {% if "Variance" in page_access_group %}
     <div class="sec">Variance</div>
     <div class="nav-items">

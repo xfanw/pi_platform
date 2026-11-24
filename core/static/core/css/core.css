@@ -408,6 +408,14 @@ h2 {
     border: 2px solid #0066cc !important;
     box-shadow: 0 0 8px rgba(0, 102, 204, 0.3) !important;
 }
+
+.audit-target {
+    font-size: 23px;
+    font-weight: 600;
+    color: var(--blue-deep);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+}
 .kpi .lbl {
     font-size: 11px;
     color: var(--ink-faint);
@@ -1879,8 +1887,10 @@ td.desc {
     height: 30px;
     padding: 4px 10px;
 }
+
 .audit-checklist {
-    height: 116px;
+    min-height: 116px;
+    max-height: 200px;
     overflow: auto;
     border: 1px solid var(--line);
     border-radius: 6px;

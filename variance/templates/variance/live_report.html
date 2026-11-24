@@ -14,7 +14,7 @@
   <div class="search-title">Filter Variance</div>
   <form method="get" class="variance-filters">
     <div><label>Ownership</label>
-      <select name="department">
+      <select name="department" onchange="filter_by_department(this.value)">
         <option value="">All</option>
         {% for item in department_list %}
         <option value="{{ item }}" {% if selected_department == item %}selected{% endif %}>{{ item }}</option>
@@ -261,5 +261,5 @@ $(function () {
   });
 });
 </script>
-<script src="{% static 'variance/live_report.js' %}"></script>
+<script src="{% static 'variance/live_report.js' %}?v=1.0"></script>
 {% endblock %}

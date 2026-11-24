@@ -1,0 +1,155 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Audit Planning | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading"><div><h1>Audit Planning</h1><p class="page-sub">Set the audit scope and capacity, then let the system recommend count records for review before the sample is frozen.</p></div></div>
+
+{% if may_create %}
+<form method="post" class="audit-builder" id="audit-builder">
+  {% csrf_token %}
+  <section class="audit-step">
+    <div class="step-number">1</div>
+    <div class="step-body">
+      <h2>Audit Scope</h2>
+      <div class="row">
+        <div class='col-md-3'><label>Current Plan Name</label><input class='form-control' maxlength="160" value="{{ cycle_ref.name }}" readonly disabled>
+          <label class='mt-4'>Ownership</label><select class='form-control' name="department_id" id="audit-department">
+          <option value="">All</option>
+          {% for item in department_list %}<option value="{{ item }}">{{ item }}</option>
+          {% endfor %}
+        </select>
+        </div>
+        <div class="audit-choice-block col-md-3">
+          <div class="audit-choice-head">
+          <label>SAP Locations</label><span class="audit-check-actions">
+            <button type="button" class="text-action" data-check="sap_location_ids" data-value="1">Select all</button>
+            <button type="button" class="text-action" data-check="sap_location_ids" data-value="0">Unselect all</button>
+          </span>
+          </div>
+          <div class="audit-checklist" id="audit-saps">
+          {% for item in sap_list %}
+          <label data-department="{{ item.department }}" hidden><input type="checkbox" name="sap_location_ids" value="{{ item.code }}">{{ item.code }}<small>{{ item.department }}</small></label>
+          {% empty %}<span class="mut">No active SAP Locations in this PI.</span>
+          {% endfor %}
+          </div>
+        </div>
+        <div class="audit-choice-block col-md-5">
+          <div class="audit-choice-head"><label>Physical Locations <span class="mut">(blank = all)</span></label><span class="audit-check-actions">
+            <button type="button" class="text-action" data-check="physical_location_ids" data-value="1">Select all</button>
+            <button type="button" class="text-action" data-check="physical_location_ids" data-value="0">Unselect all</button>
+          </span></div>
+          <div class="audit-exclude-tools">
+          <input id="audit-exclude-keywords" placeholder="Exclude keywords, comma separated">
+          <button type="button" class="btn btn-sm btn-outline-danger" id="audit-exclude-apply">Exclude matches</button></div>
+          <div class="audit-checklist" id="audit-physical">
+          {% for item in physical_list %}
+          <label data-sap="{{ item.sap_code }}" hidden>
+          <input type="checkbox" name="physical_location_ids" value="{{ item.loc_name }}">{{ item.loc_name }}<small>{{ item.sap_code }}</small></label>
+          {% empty %}<span class="mut">No active physical Locations in this PI.</span>
+          {% endfor %}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="audit-step">
+    <div class="step-number">2</div>
+    <div class="step-body">
+      <h2>Capacity</h2>
+      <div class="row">
+        <div class='col-md-2'><label>Auditors</label><input class='form-control' type="number" min="1" name="auditors" id="audit-auditors" value="8" required></div>
+        <div class='col-md-2'><label>Pages per Auditor</label><input class='form-control' type="number" min="1" name="pages_per_auditor" id="audit-pages" value="2" required></div>
+        <div class='col-md-2'><label>Page Density</label>
+        <select class='form-control' name="density" id="audit-density">
+          <option value="30">Spacious (30 rows)</option>
+          <option value="35" selected>Normal (35 rows)</option>
+          <option value="39">Compact (39 rows)</option>
+        </select></div>
+        <div class="col-md-6"><label>Target Audit Count <span class="mut">Auditors × pages × rows</span></label>
+        <label id="audit-target" class='audit-target'>560</label>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="audit-step">
+    <div class="step-number">3</div>
+    <div class="step-body">
+      <h2>Sampling Mix</h2>
+      <div class="audit-rule-note">
+        <b>Selection Rule</b>
+        <div><span>When Top 80% records ≥ capacity</span><strong><i>85%</i> of audit capacity from the cumulative Top 80% book-value population, then <i>10%</i> highest remaining MAP$, then <i>5%</i> largest remaining absolute variance.</strong></div>
+        <div><span>When Top 80% records &lt; capacity</span><strong>Select that population completely, then variance P/Ns with MAP$ above $100, then fill the remaining capacity by MAP$ descending.</strong></div>
+        <div><span>Record basis</span><strong>Count Qty = 0 is excluded. Selecting a P/N normally includes all matching tag, sub-location or location records; partial record counts may be set during review.</strong></div>
+      </div>
+      <div class="frow">
+        <div><label>Top 80% Value</label><input type="number" min="0" max="100" step="0.01" name="value_pct" value="85" class="mix-input" required id="value-pct"></div>
+        <div><label>Highest MAP$</label><input type="number" min="0" max="100" step="0.01" name="map_pct" value="10" class="mix-input" required id="map-pct"></div>
+        <div><label>Largest Abs Variance</label><input type="number" min="0" max="100" step="0.01" name="variance_pct" value="5" class="mix-input" required id="variance-pct"></div>
+        <div><label>Total</label><span class="audit-target" id="mix-total">100%</span></div>
+        <button class="btn btn-sm btn-primary" type="submit" id="generate-recommendation" disabled>Generate Recommendation</button>
+      </div>
+    </div>
+  </section>
+</form>
+{% else %}<div class="flash warn">Your role can review Audit Plans but is not assigned to create plans for an Ownership group in this Plant.</div>{% endif %}
+
+<section class="card">
+  <div class="table-section-head"><div><h2>Audit Plan History</h2><span class="mut">Current open PI</span></div></div>
+  <div class="scroll"><table><thead><tr><th>Plan</th><th>Ownership</th><th>Target</th><th>Selected</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody>
+  {% for item in plans %}
+  <tr>
+    <td><b>{{ item.name }}</b></td>
+    <td>{{ item.department.name }}</td>
+    <td class="num">{{ item.target_count }}</td>
+    <td class="num">{{ item.selected_total|default:0 }}</td>
+    <td><span class="chip">{{ item.get_status_display }}</span></td>
+    <td class="mut">{{ item.updated_at|date:"Y-m-d H:i" }}</td>
+    <td><a class="btn ghost" href="{% url 'core:home' item.plan_id %}">{% if item.status == 'DRAFT' %}Review{% else %}View{% endif %}</a></td>
+  </tr>
+  {% empty %}<tr><td colspan="7" class="mut">No Audit Plans for this PI yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const department = document.getElementById('audit-department');
+  if (!department) return;
+  const sapLabels = [...document.querySelectorAll('#audit-saps label[data-department]')];
+  const physicalLabels = [...document.querySelectorAll('#audit-physical label[data-sap]')];
+  function refreshScope() {
+    const departmentId = department.value;
+    sapLabels.forEach(label => {
+      // Show all SAP locations if "All" is selected (empty value), otherwise filter by department
+      label.hidden = departmentId !== "" && label.dataset.department !== departmentId;
+      if (label.hidden) label.querySelector('input').checked = false;
+    });
+    const checkedSaps = new Set(sapLabels.filter(label => !label.hidden && label.querySelector('input').checked).map(label => label.querySelector('input').value));
+    physicalLabels.forEach(label => {
+      label.hidden = !checkedSaps.has(label.dataset.sap);
+      if (label.hidden) label.querySelector('input').checked = false;
+    });
+  }
+  department.addEventListener('change', refreshScope);
+  document.getElementById('audit-saps').addEventListener('change', refreshScope);
+  document.querySelectorAll('[data-check]').forEach(button => button.addEventListener('click', () => {
+    document.querySelectorAll('input[name="' + button.dataset.check + '"]').forEach(input => {
+      if (!input.closest('label').hidden) input.checked = button.dataset.value === '1';
+    });
+    refreshScope();
+  }));
+  document.getElementById('audit-exclude-apply')?.addEventListener('click', () => {
+    const keywords = document.getElementById('audit-exclude-keywords').value
+      .split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+    const visible = physicalLabels.filter(label => !label.hidden);
+    visible.forEach(label => {
+      const input = label.querySelector('input');
+      input.checked = !keywords.some(keyword => label.textContent.toLowerCase().includes(keyword));
+    });
+  });
+
+
+  refreshScope(); 
+})();
+</script>
+<script src="{% static 'audit/planning.js' %}?v=1.0"></script>
+{% endblock %}
