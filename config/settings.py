@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "cycles",
     "count",
     "variance",
+    "audit",
 ]
 
 MIDDLEWARE = [
