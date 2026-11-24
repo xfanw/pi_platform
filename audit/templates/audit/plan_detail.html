@@ -1,0 +1,39 @@
+{% extends "core/base.html" %}
+{% block title %}{{ plan.name }} | Audit Plan{% endblock %}
+{% block body %}
+<div class="audit-title-row"><div><a href="{% url 'portal:audit-planning' %}">← Audit Planning</a><h1>{{ plan.name }}</h1><p class="page-sub">{{ plan.department.name }} · {{ plan.get_status_display }} · generated selection remains editable until Finalize.</p></div><div class="frow">{% if plan.status != 'DRAFT' %}<a class="btn ghost" href="{% url 'portal:audit-workbook' plan.plan_id %}">Audit Sheet Excel</a><a class="btn" href="{% url 'portal:audit-results' plan.plan_id %}">View Audit Results</a>{% endif %}</div></div>
+
+<div class="cards audit-status-cards">
+  <div class="kpi"><span class="lbl">Target Capacity</span><span class="val">{{ plan.target_count }}</span><span class="sub">{{ plan.auditors }} auditor(s) · {{ plan.pages_per_auditor }} page(s) each</span></div>
+  <div class="kpi"><span class="lbl">Selected Count</span><span class="val">{{ selected }}</span><span class="sub">of {{ available }} available non-zero records</span></div>
+  <div class="kpi"><span class="lbl">Difference</span><span class="val {% if difference < 0 %}neg{% endif %}">{% if difference > 0 %}+{% endif %}{{ difference }}</span><span class="sub">negative means below capacity</span></div>
+  <div class="kpi"><span class="lbl">Required Pages</span><span class="val">{{ required_pages }}</span><span class="sub">{{ plan.rows_per_page }} rows per page</span></div>
+</div>
+
+{% if plan.status == 'DRAFT' %}
+<section class="card audit-controls">
+  <form method="post" class="frow">{% csrf_token %}<input type="hidden" name="action" value="regenerate"><input type="hidden" name="row_version" value="{{ plan.row_version }}">
+    <div><label>Auditors</label><input type="number" name="auditors" min="1" value="{{ plan.auditors }}" required></div>
+    <div><label>Pages each</label><input type="number" name="pages_per_auditor" min="1" value="{{ plan.pages_per_auditor }}" required></div>
+    <div><label>Density</label><select name="density">{% for value,label in density_choices %}<option value="{{ value }}" {% if value == plan.density %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label>Value %</label><input type="number" name="value_pct" min="0" max="100" step=".01" value="{{ plan.value_pct }}"></div>
+    <div><label>MAP %</label><input type="number" name="map_pct" min="0" max="100" step=".01" value="{{ plan.map_pct }}"></div>
+    <div><label>Variance %</label><input type="number" name="variance_pct" min="0" max="100" step=".01" value="{{ plan.variance_pct }}"></div>
+    <button type="submit" {% if not may_change %}disabled{% endif %}>Regenerate</button>
+  </form>
+  <div class="audit-rule-note"><b>Why selected?</b><div><span>Top 80% Value</span><strong>Cumulative book-value population by SAP Location.</strong></div><div><span>High Value</span><strong>Highest remaining MAP$.</strong></div><div><span>High Abs Variance</span><strong>Largest remaining absolute variance value.</strong></div></div>
+  {% if may_finalize %}<form method="post" onsubmit="return confirm('Finalize and freeze these Audit Records?');">{% csrf_token %}<input type="hidden" name="action" value="finalize"><input type="hidden" name="row_version" value="{{ plan.row_version }}"><button type="submit">Finalize &amp; Build Audit Sheet</button></form>{% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="audit-table-toolbar"><div class="audit-tabs"><a class="{% if tab == 'selected' %}on{% endif %}" href="?show=selected">Selected</a><a class="{% if tab == 'unselected' %}on{% endif %}" href="?show=unselected">Unselected</a><a class="{% if tab == 'all' %}on{% endif %}" href="?show=all">All Candidates</a></div><form method="get" class="frow audit-search"><input type="hidden" name="show" value="{{ tab }}"><input type="search" name="search" value="{{ search }}" placeholder="Search P/N, description or SAP"><button class="btn ghost">Search</button></form></div>
+  <div class="mut">{{ candidate_total }} candidate P/N group(s)</div>
+  <div class="audit-candidate-wrap"><table class="audit-candidate-table"><thead><tr><th>Audit / Total</th><th>SAP</th><th>Part Number</th><th>Description</th><th class="num">Book Value</th><th class="num">Coverage</th><th class="num">MAP$</th><th class="num">Abs Variance</th><th>Record Mix</th><th>Reason</th></tr></thead><tbody>
+  {% for item in candidates %}<tr class="{% if item.selected_records %}audit-selected{% endif %}">
+    <td>{% if plan.status == 'DRAFT' and may_change %}<form method="post" class="audit-record-editor">{% csrf_token %}<input type="hidden" name="action" value="candidate"><input type="hidden" name="candidate_id" value="{{ item.candidate_id }}"><input type="hidden" name="row_version" value="{{ plan.row_version }}"><input type="number" name="selected_records" min="0" max="{{ item.count_records }}" value="{{ item.selected_records }}"><span>/ {{ item.count_records }}</span><button class="btn tiny" type="submit">Save</button></form>{% else %}<b>{{ item.selected_records }}</b> / {{ item.count_records }}{% endif %}</td>
+    <td><span class="chip">{{ item.sap_location.code }}</span></td><td><b>{{ item.part_number_snapshot }}</b></td><td class="desc" title="{{ item.description_snapshot }}">{{ item.description_snapshot }}</td><td class="num">${{ item.book_value|floatformat:2 }}</td><td class="num">{{ item.coverage_pct|floatformat:1 }}%</td><td class="num">${{ item.map_price|floatformat:2 }}</td><td class="num {% if item.variance_value < 0 %}neg{% endif %}">${{ item.abs_variance|floatformat:2 }}</td><td class="audit-mix"><span>{{ item.location_count }} loc</span><span>{{ item.sub_location_count }} sub</span><span>{{ item.tag_count }} tag</span></td><td>{% if item.selection_reason %}<span class="chip">{{ item.get_selection_reason_display }}</span>{% else %}—{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="10" class="mut">No candidates match this view.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

@@ -8,11 +8,11 @@ from site_setting.models import PhysicalLocation, Plant, SAPLocation, SubLocatio
 
 
 class CycleTagRange(TimeStampedModel):
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT, related_name="tag_ranges")
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT, related_name="tag_ranges")
-    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, related_name="tag_ranges")
-    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.PROTECT, related_name="tag_ranges")
-    sub_location = models.ForeignKey(SubLocation, on_delete=models.PROTECT, related_name="tag_ranges")
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="tag_ranges")
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="tag_ranges")
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, related_name="tag_ranges")
+    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.CASCADE, related_name="tag_ranges")
+    sub_location = models.ForeignKey(SubLocation, on_delete=models.CASCADE, related_name="tag_ranges")
     prefix = models.CharField(max_length=24, blank=True)
     start_number = models.BigIntegerField()
     end_number = models.BigIntegerField()
@@ -24,8 +24,8 @@ class CycleTagRange(TimeStampedModel):
 
 
 class TempCycleTagMain(TimeStampedModel):
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT)
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE)
     source_filename = models.CharField(max_length=255)
     status = models.CharField(max_length=16)
     row_count = models.PositiveIntegerField(default=0)
@@ -34,17 +34,17 @@ class TempCycleTagMain(TimeStampedModel):
     imported_count = models.PositiveIntegerField(default=0)
     skipped_row = models.PositiveIntegerField(default=0)
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT)
+    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
 
 
 class TempCycleTagDetail(TimeStampedModel):
     row_number = models.PositiveIntegerField()
-    batch = models.ForeignKey(TempCycleTagMain, on_delete=models.PROTECT)
-    plant = models.ForeignKey(Plant, on_delete=models.PROTECT)
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
-    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, null=True, blank=True)
-    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.PROTECT, null=True, blank=True)
-    sub_location = models.ForeignKey(SubLocation, on_delete=models.PROTECT, null=True, blank=True)
+    batch = models.ForeignKey(TempCycleTagMain, on_delete=models.CASCADE)
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE)
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, null=True, blank=True)
+    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.CASCADE, null=True, blank=True)
+    sub_location = models.ForeignKey(SubLocation, on_delete=models.CASCADE, null=True, blank=True)
     prefix = models.CharField(max_length=24, blank=True)
     start_number = models.BigIntegerField()
     end_number = models.BigIntegerField()

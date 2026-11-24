@@ -4,7 +4,7 @@ from cycles.app_models.cycle_models import CyclePhysicalLocation, CycleSAPLocati
 PERMISSION = "Setting.PI Cycles"
 
 
-# Create your views here.
+@login_required
 def audit_planning(request):
     # Your view logic here
     curr_user = request.user
@@ -43,3 +43,9 @@ def audit_planning(request):
     pprint(context)
 
     return render(request, "audit/planning.html", context)
+
+
+@login_required
+def audit_planning_create(request):
+    # Your view logic for creating an audit planning entry
+    pass

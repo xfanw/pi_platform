@@ -12,7 +12,7 @@
     <div class="step-body">
       <h2>Audit Scope</h2>
       <div class="row">
-        <div class='col-md-3'><label>Current Plan Name</label><input class='form-control' maxlength="160" value="{{ cycle_ref.name }}" readonly disabled>
+        <div class='col-md-3'><label>Current Plan Name</label><input class='form-control' maxlength="160" value="{{ cycle_ref.name }}" name="plan_name">
           <label class='mt-4'>Ownership</label><select class='form-control' name="department_id" id="audit-department">
           <option value="">All</option>
           {% for item in department_list %}<option value="{{ item }}">{{ item }}</option>

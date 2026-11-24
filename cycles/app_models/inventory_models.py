@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 
 
 class PartMaster(TimeStampedModel):
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT, related_name="parts")
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="parts")
     part_number = models.CharField(max_length=80)
     description = models.CharField(max_length=500, blank=True)
     business_unit = models.CharField(max_length=80, blank=True)
@@ -29,7 +29,7 @@ class PartMaster(TimeStampedModel):
 
 
 class TempPartMain(TimeStampedModel):
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE)
     source_filename = models.CharField(max_length=255)
     status = models.CharField(max_length=16)
     row_count = models.PositiveIntegerField(default=0)
@@ -38,13 +38,13 @@ class TempPartMain(TimeStampedModel):
     imported_count = models.PositiveIntegerField(default=0)
     skipped_row = models.PositiveIntegerField(default=0)
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT)
+    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
 
 
 class TempPartDetail(TimeStampedModel):
     row_number = models.PositiveIntegerField()
-    batch = models.ForeignKey(TempPartMain, on_delete=models.PROTECT)
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
+    batch = models.ForeignKey(TempPartMain, on_delete=models.CASCADE)
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE)
     part_number = models.CharField(max_length=80)
     description = models.CharField(max_length=500, blank=True)
     business_unit = models.CharField(max_length=80, blank=True)
@@ -54,9 +54,9 @@ class TempPartDetail(TimeStampedModel):
 
 
 class BookInventoryLine(TimeStampedModel):
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT, related_name="book_lines")
-    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, related_name="book_lines")
-    part = models.ForeignKey(PartMaster, on_delete=models.PROTECT, related_name="book_lines")
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="book_lines")
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, related_name="book_lines")
+    part = models.ForeignKey(PartMaster, on_delete=models.CASCADE, related_name="book_lines")
     quantity = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
 
     class Meta:
@@ -79,7 +79,7 @@ class BookInventoryLine(TimeStampedModel):
 
 
 class TempSAPPartMain(TimeStampedModel):
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE)
     source_filename = models.CharField(max_length=255)
     status = models.CharField(max_length=16)
     row_count = models.PositiveIntegerField(default=0)
@@ -88,24 +88,24 @@ class TempSAPPartMain(TimeStampedModel):
     imported_count = models.PositiveIntegerField(default=0)
     skipped_row = models.PositiveIntegerField(default=0)
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT)
+    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
 
 
 class TempSAPPartDetail(TimeStampedModel):
     row_number = models.PositiveIntegerField()
-    batch = models.ForeignKey(TempSAPPartMain, on_delete=models.PROTECT)
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
-    part = models.ForeignKey(PartMaster, on_delete=models.PROTECT, null=True, blank=True)
-    sap_location = models.ForeignKey(SAPLocation, on_delete=models.PROTECT, null=True, blank=True)
+    batch = models.ForeignKey(TempSAPPartMain, on_delete=models.CASCADE)
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE)
+    part = models.ForeignKey(PartMaster, on_delete=models.CASCADE, null=True, blank=True)
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, null=True, blank=True)
     quantity = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
     validation_errors = models.JSONField(default=list, blank=True)
     is_valid = models.BooleanField(default=False)
 
 
 class ExcludedPart(TimeStampedModel):
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT, related_name="excluded_parts")
-    sap_location = models.ForeignKey(SAPLocation, null=True, blank=True, on_delete=models.PROTECT, related_name="excluded_parts")
-    part = models.ForeignKey(PartMaster, on_delete=models.PROTECT, related_name="exclusions")
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="excluded_parts")
+    sap_location = models.ForeignKey(SAPLocation, null=True, blank=True, on_delete=models.CASCADE, related_name="excluded_parts")
+    part = models.ForeignKey(PartMaster, on_delete=models.CASCADE, related_name="exclusions")
     reason = models.CharField(max_length=240)
 
     class Meta:
@@ -119,7 +119,7 @@ class ExcludedPart(TimeStampedModel):
 
 
 class TempExPartMain(TimeStampedModel):
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE)
     source_filename = models.CharField(max_length=255)
     status = models.CharField(max_length=16)
     row_count = models.PositiveIntegerField(default=0)
@@ -128,15 +128,15 @@ class TempExPartMain(TimeStampedModel):
     imported_count = models.PositiveIntegerField(default=0)
     skipped_row = models.PositiveIntegerField(default=0)
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT)
+    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
 
 
 class TempExPartDetail(TimeStampedModel):
     row_number = models.PositiveIntegerField()
-    batch = models.ForeignKey(TempExPartMain, on_delete=models.PROTECT)
-    cycle = models.ForeignKey(PICycle, on_delete=models.PROTECT)
-    sap_location = models.ForeignKey(SAPLocation, null=True, blank=True, on_delete=models.PROTECT)
-    part = models.ForeignKey(PartMaster, on_delete=models.PROTECT, null=True, blank=True)
+    batch = models.ForeignKey(TempExPartMain, on_delete=models.CASCADE)
+    cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE)
+    sap_location = models.ForeignKey(SAPLocation, null=True, blank=True, on_delete=models.CASCADE)
+    part = models.ForeignKey(PartMaster, on_delete=models.CASCADE, null=True, blank=True)
     reason = models.CharField(max_length=240)
     validation_errors = models.JSONField(default=list, blank=True)
     is_valid = models.BooleanField(default=False)
