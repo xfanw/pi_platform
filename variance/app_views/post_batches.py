@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.utils import timezone
 
 from core._imports_for_views import *
 from core.context_processors import get_basic_info
@@ -20,7 +19,7 @@ def post_batches_view(request):
 
     can_act, msg = check_permission(curr_user, plant, PERMISSION)
     if not can_act:
-        messages.error(request, mark_safe(f"You do NOT have permission to post batches. {msg}"))
+        messages.error(request, mark_safe(f"You do NOT have permission to view post batches. {msg}"))
         return redirect("core:home")
 
     active_cycle = context["cycle_ref"]
@@ -122,7 +121,7 @@ def post_batch_confirm(request, batch_id):
             batch_lines = PostBatchLine.objects.filter(batch=batch)
             included_lines = batch_lines.exclude(id__in=exclude_line_ids)
             excluded_lines = batch_lines.filter(id__in=exclude_line_ids)
-            
+
             # Update included lines to "Posted"
             for line in included_lines:
                 # Update VarianceResolution status
@@ -134,7 +133,7 @@ def post_batch_confirm(request, batch_id):
                 )
                 # Update CycleVariance status to match
                 CycleVariance.objects.filter(pk=line.variance_id).update(status="Posted")
-            
+
             # Update excluded lines to "Needs Review"
             for line in excluded_lines:
                 # Update VarianceResolution status

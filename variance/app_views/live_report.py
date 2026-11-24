@@ -19,12 +19,12 @@ def variance_live_report(request):
     context = get_basic_info(request)
     plant = context["plant_ref"]
     if not plant:
-        messages.error(request, "No Plant is available in your a`ppr`oved scope.")
+        messages.error(request, "No Plant is available in your approved scope.")
         return redirect("core:home")
 
     can_act, msg = check_permission(curr_user, plant, PERMISSION)
     if not can_act:
-        messages.error(request, mark_safe(f"You do NOT have permission to view variance by part. {msg}"))
+        messages.error(request, mark_safe(f"You do NOT have permission to view variance report. {msg}"))
         return redirect("core:home")
 
     active_cycle = context["cycle_ref"]
@@ -118,7 +118,7 @@ def get_comment(request):
 
     can_act, msg = check_permission(curr_user, plant, PERMISSION)
     if not can_act:
-        return json_error(mark_safe(f"You do NOT have permission to view variance by part. {msg}"))
+        return json_error(mark_safe(f"You do NOT have permission to view variance comment. {msg}"))
 
     active_cycle = context["cycle_ref"]
     if not active_cycle:
