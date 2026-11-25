@@ -2,11 +2,13 @@ from django.db import models
 from django.db.models import Q
 from core.constants import PRICE_DECIMAL_PLACES, PRICE_MAX_DIGITS, QUANTITY_DECIMAL_PLACES, QUANTITY_MAX_DIGITS
 from core.models import TimeStampedModel
-from count.models import CountRecord
+from count.models import CountRecord, CycleTagDetail
 from cycles.app_models.cycle_models import PICycle
 from cycles.app_models.inventory_models import PartMaster
-from site_setting.models import SAPLocation
+from site_setting.models import PhysicalLocation, SAPLocation, SubLocation
 from django.contrib.auth.models import User
+
+from variance.models import CycleVariance
 
 # Create your models here.
 
@@ -22,6 +24,10 @@ class AuditPlan(TimeStampedModel):
     value_pct = models.DecimalField(max_digits=5, decimal_places=2, default=85)
     map_pct = models.DecimalField(max_digits=5, decimal_places=2, default=10)
     variance_pct = models.DecimalField(max_digits=5, decimal_places=2, default=5)
+    real_top_80_count = models.PositiveIntegerField(default=0)
+    real_map_count = models.PositiveIntegerField(default=0)
+    real_variance_count = models.PositiveIntegerField(default=0)
+    real_total_count = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=24)  # Draft, In Process, Finalized, Submitted
     finalized_at = models.DateTimeField(null=True, blank=True)
     results_submitted_at = models.DateTimeField(null=True, blank=True)
@@ -42,6 +48,9 @@ class AuditCandidate(TimeStampedModel):
     plan = models.ForeignKey(AuditPlan, on_delete=models.CASCADE, related_name="candidates")
     sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, related_name="audit_candidates")
     part = models.ForeignKey(PartMaster, on_delete=models.CASCADE, related_name="audit_candidates")
+    variance_record = models.ForeignKey(
+        CycleVariance, null=True, blank=True, on_delete=models.CASCADE, related_name="audit_candidates"
+    )
     part_number_snapshot = models.CharField(max_length=80)
     description_snapshot = models.CharField(max_length=500, blank=True)
     book_value = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
@@ -75,14 +84,20 @@ class AuditCandidate(TimeStampedModel):
 class AuditRecord(TimeStampedModel):
     plan = models.ForeignKey(AuditPlan, on_delete=models.CASCADE, related_name="records")
     candidate = models.ForeignKey(AuditCandidate, on_delete=models.CASCADE, related_name="records", null=True)
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, related_name="audit_records", null=True)
+    physical_location = models.ForeignKey(PhysicalLocation, on_delete=models.CASCADE, related_name="audit_records", null=True)
+    sub_location = models.ForeignKey(SubLocation, on_delete=models.CASCADE, related_name="audit_records", null=True)
+    tag_number = models.ForeignKey(CycleTagDetail, on_delete=models.CASCADE, related_name="audit_records", null=True)
     source_count_record = models.ForeignKey(CountRecord, on_delete=models.CASCADE, related_name="audit_records")
-    sap_location_code = models.CharField(max_length=16)
-    physical_location_snapshot = models.CharField(max_length=160, blank=True)
-    sub_location_snapshot = models.CharField(max_length=160, blank=True)
-    tag_number_snapshot = models.CharField(max_length=80, blank=True)
+    variance = models.ForeignKey(CycleVariance, on_delete=models.CASCADE, related_name="audit_records", null=True)
+
+    sap_location_code = models.CharField(max_length=16, blank=True, null=True)
+    physical_location_snapshot = models.CharField(max_length=160, blank=True, null=True)
+    sub_location_snapshot = models.CharField(max_length=160, blank=True, null=True)
+    tag_number_snapshot = models.CharField(max_length=80, blank=True, null=True)
     part_number_snapshot = models.CharField(max_length=80)
     count_quantity_snapshot = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES)
-
+    price_snapshot = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
     selected = models.BooleanField(default=False)
 
     page_number = models.IntegerField(default=0)
@@ -90,7 +105,7 @@ class AuditRecord(TimeStampedModel):
     result_status = models.CharField(max_length=31, default="Pending")  # Pending, Correct, Error, Unable / Not Counted
     audit_quantity = models.DecimalField(max_digits=QUANTITY_MAX_DIGITS, decimal_places=QUANTITY_DECIMAL_PLACES, null=True, blank=True)
     error_type = models.CharField(max_length=24, null=True, blank=True)  # Wrong Quantity, Wrong Part Number, Other
-    corrected_part = models.CharField(max_length=80)
+    corrected_part = models.CharField(max_length=80, blank=True, null=True)
     result_comment = models.CharField(max_length=500, blank=True)
     auditor_name = models.CharField(max_length=160, blank=True)
     completed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="completed_audit_records")

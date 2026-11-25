@@ -1,7 +1,11 @@
 {% extends "core/base.html" %}
 {% block title %}{{ plan.name }} | Audit Plan{% endblock %}
 {% block body %}
-<div class="audit-title-row"><div><a href="{% url 'portal:audit-planning' %}">← Audit Planning</a><h1>{{ plan.name }}</h1><p class="page-sub">{{ plan.department.name }} · {{ plan.get_status_display }} · generated selection remains editable until Finalize.</p></div><div class="frow">{% if plan.status != 'DRAFT' %}<a class="btn ghost" href="{% url 'portal:audit-workbook' plan.plan_id %}">Audit Sheet Excel</a><a class="btn" href="{% url 'portal:audit-results' plan.plan_id %}">View Audit Results</a>{% endif %}</div></div>
+<div class="audit-title-row"><div><a href="{% url 'audit:audit_planning' %}">← Audit Planning</a><h1>{{ plan.name }}</h1><p class="page-sub">{{ plan.department.name }} · {{ plan.get_status_display }} · generated selection remains editable until Finalize.</p></div>
+<div class="frow">{% if plan.status != 'DRAFT' %}
+  <a class="btn btn-sm btn-outline-primary" href="{% url 'core:home' %}">Audit Sheet Excel</a>
+  <a class="btn btn-sm btn-primary" href="{% url 'core:home' %}">View Audit Results</a>{% endif %}
+</div></div>
 
 <div class="cards audit-status-cards">
   <div class="kpi"><span class="lbl">Target Capacity</span><span class="val">{{ plan.target_count }}</span><span class="sub">{{ plan.auditors }} auditor(s) · {{ plan.pages_per_auditor }} page(s) each</span></div>

@@ -19,7 +19,7 @@ function calc_totel() {
     $("#audit-target").text(target);
 }
 
-$("#audit-exclude-keywords").keydown(function () {
+$("#audit-exclude-keywords").keyup(function () {
     $("#audit-exclude-apply").click();
 });
 

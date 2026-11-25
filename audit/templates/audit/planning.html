@@ -2,17 +2,17 @@
 {% load static %}
 {% block title %}Audit Planning | PI Platform{% endblock %}
 {% block body %}
-<div class="page-heading"><div><h1>Audit Planning</h1><p class="page-sub">Set the audit scope and capacity, then let the system recommend count records for review before the sample is frozen.</p></div></div>
+<div class="page-heading"><div><h1>Audit Planning</h1><a id="regenerate-top-80" class="btn btn-primary" href="{% url 'audit:test_top_80' %}">Regenerate Top 80%</a><p class="page-sub">Set the audit scope and capacity, then let the system recommend count records for review before the sample is frozen.</p></div></div>
 
 {% if may_create %}
-<form method="post" class="audit-builder" id="audit-builder">
+<form method="post" class="audit-builder" id="audit-builder" action="{% url 'audit:audit_planning_create' %}">
   {% csrf_token %}
   <section class="audit-step">
     <div class="step-number">1</div>
     <div class="step-body">
       <h2>Audit Scope</h2>
       <div class="row">
-        <div class='col-md-3'><label>Current Plan Name</label><input class='form-control' maxlength="160" value="{{ cycle_ref.name }}" name="plan_name">
+        <div class='col-md-3'><label>Current Plan Name</label><input class='form-control' maxlength="160" value="{{ audit_plan_name }}" name="plan_name">
           <label class='mt-4'>Ownership</label><select class='form-control' name="department_id" id="audit-department">
           <option value="">All</option>
           {% for item in department_list %}<option value="{{ item }}">{{ item }}</option>
@@ -21,14 +21,14 @@
         </div>
         <div class="audit-choice-block col-md-3">
           <div class="audit-choice-head">
-          <label>SAP Locations</label><span class="audit-check-actions">
+          <label>SAP Locations <span class="mut">(blank = all)</span></label><span class="audit-check-actions">
             <button type="button" class="text-action" data-check="sap_location_ids" data-value="1">Select all</button>
             <button type="button" class="text-action" data-check="sap_location_ids" data-value="0">Unselect all</button>
           </span>
           </div>
           <div class="audit-checklist" id="audit-saps">
           {% for item in sap_list %}
-          <label data-department="{{ item.department }}" hidden><input type="checkbox" name="sap_location_ids" value="{{ item.code }}">{{ item.code }}<small>{{ item.department }}</small></label>
+          <label data-department="{{ item.department }}" hidden><input type="checkbox" name="sap_location_ids" value="{{ item.sap_id }}" data-set="{{ item.code }}">{{ item.code }}<small>{{ item.department }}</small></label>
           {% empty %}<span class="mut">No active SAP Locations in this PI.</span>
           {% endfor %}
           </div>
@@ -43,8 +43,8 @@
           <button type="button" class="btn btn-sm btn-outline-danger" id="audit-exclude-apply">Exclude matches</button></div>
           <div class="audit-checklist" id="audit-physical">
           {% for item in physical_list %}
-          <label data-sap="{{ item.sap_code }}" hidden>
-          <input type="checkbox" name="physical_location_ids" value="{{ item.loc_name }}">{{ item.loc_name }}<small>{{ item.sap_code }}</small></label>
+          <label data-sap="{{ item.sap_code }}" >
+          <input type="checkbox" name="physical_location_ids" value="{{ item.loc_id }}">{{ item.loc_name }}<small>{{ item.sap_code }}</small></label>
           {% empty %}<span class="mut">No active physical Locations in this PI.</span>
           {% endfor %}</div>
         </div>
@@ -60,6 +60,7 @@
         <div class='col-md-2'><label>Pages per Auditor</label><input class='form-control' type="number" min="1" name="pages_per_auditor" id="audit-pages" value="2" required></div>
         <div class='col-md-2'><label>Page Density</label>
         <select class='form-control' name="density" id="audit-density">
+          <option value="1">Test (1 rows)</option>
           <option value="30">Spacious (30 rows)</option>
           <option value="35" selected>Normal (35 rows)</option>
           <option value="39">Compact (39 rows)</option>
@@ -123,7 +124,8 @@
       label.hidden = departmentId !== "" && label.dataset.department !== departmentId;
       if (label.hidden) label.querySelector('input').checked = false;
     });
-    const checkedSaps = new Set(sapLabels.filter(label => !label.hidden && label.querySelector('input').checked).map(label => label.querySelector('input').value));
+    const checkedSaps = new Set(sapLabels.filter(label => !label.hidden && label.querySelector('input').checked).map(label => label.querySelector('input').dataset.set));
+    console.log("Checked SAPs:", checkedSaps);
     physicalLabels.forEach(label => {
       label.hidden = !checkedSaps.has(label.dataset.sap);
       if (label.hidden) label.querySelector('input').checked = false;
