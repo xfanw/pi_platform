@@ -4,9 +4,58 @@ from django.db.models.functions import Abs
 from audit.models import AuditCandidate, AuditRecord
 from django.db import transaction
 
+from count.models import CycleTagDetail
 from cycles.app_models.cycle_models import CycleSAPLocation
 from cycles.app_models.inventory_models import PartMaster
 from variance.models import CycleVariance
+
+
+def link_candidates_to_audit_records(plan_ref, candidate_set, in_top80, selection_reason):
+    """
+    Link created AuditCandidates to their related AuditRecords.
+
+    After candidates are created via bulk_create, this function:
+    1. Maps candidates by (sap_location_code, part_number)
+    2. Updates all matching AuditRecords with the candidate foreign key
+    3. Uses bulk_update for efficiency
+
+    Args:
+        plan_ref: The AuditPlan object
+        candidate_set: List of dicts with 'sap_location_code' and 'part_number_snapshot' keys
+        in_top80: Boolean value to filter candidates (in_top80 field)
+        selection_reason: String value to filter candidates (selection_reason field)
+    """
+    if not candidate_set:
+        return
+
+    # Query created candidates with their ID and identifiers
+    candidate_map = {}
+    created_candidates = AuditCandidate.objects.filter(
+        plan=plan_ref, in_top80=in_top80, selection_reason=selection_reason
+    ).values_list("id", "sap_location__code", "part_number_snapshot")
+
+    for candidate_id, sap_code, part_number in created_candidates:
+        candidate_map[(sap_code, part_number)] = candidate_id
+
+    # Build audit records to update
+    audit_records_to_update = []
+    for item in candidate_set:
+        sap_code = item["sap_location_code"]
+        part_number = item["part_number_snapshot"]
+        candidate_id = candidate_map.get((sap_code, part_number))
+
+        if candidate_id:
+            # Get all matching audit records and prepare for update
+            audit_records = AuditRecord.objects.filter(
+                plan=plan_ref, sap_location_code=sap_code, part_number_snapshot=part_number, selected=True
+            )
+            for record in audit_records:
+                record.candidate_id = candidate_id
+                audit_records_to_update.append(record)
+
+    # Bulk update all audit records
+    if audit_records_to_update:
+        AuditRecord.objects.bulk_update(audit_records_to_update, ["candidate_id"], batch_size=1000)
 
 
 def generate_audit_records(audit_plan, count_records):
@@ -18,7 +67,9 @@ def generate_audit_records(audit_plan, count_records):
     - Delete existing records in single query
     - Prefetch related objects to avoid N+1 queries
     - Batch variance lookups instead of per-record queries
+    - Batch tag lookups instead of per-record queries
     - Use bulk_create with batch_size for memory efficiency
+    - Minimize field transformations and lookups
     """
     # Single query to delete existing records
     AuditRecord.objects.filter(plan=audit_plan).delete()
@@ -26,22 +77,35 @@ def generate_audit_records(audit_plan, count_records):
     # Prefetch related objects to avoid N+1 queries
     count_records = count_records.select_related("sap_location", "physical_location", "sub_location", "part")
 
-    # Batch prefetch all variance records needed
+    # First pass: collect IDs for batch lookups
+    count_records_list = list(count_records)
+
+    if not count_records_list:
+        return []
+
     sap_location_ids = set()
     part_ids = set()
+    tag_numbers = set()
 
-    # First pass: collect IDs for batch lookup
-    count_records_list = list(count_records)
     for count_record in count_records_list:
         sap_location_ids.add(count_record.sap_location_id)
         part_ids.add(count_record.part_id)
+        if count_record.tag_number:
+            tag_numbers.add(count_record.tag_number)
 
-    # Single query to get all variances at once
+    # Batch prefetch all variance records (single query)
     variances_map = {}
     if sap_location_ids and part_ids:
         variances = CycleVariance.objects.filter(cycle=audit_plan.cycle, sap_location_id__in=sap_location_ids, part_id__in=part_ids)
         for variance in variances:
             variances_map[(variance.sap_location_id, variance.part_id)] = variance
+
+    # Batch prefetch all tag details (single query instead of N queries!)
+    tags_map = {}
+    if tag_numbers:
+        tags = CycleTagDetail.objects.filter(tag_number__in=tag_numbers)
+        for tag in tags:
+            tags_map[tag.tag_number] = tag
 
     # Build audit records list in memory (no DB calls)
     audit_records_to_create = []
@@ -50,6 +114,13 @@ def generate_audit_records(audit_plan, count_records):
         # Get cached variance record
         variance_key = (count_record.sap_location_id, count_record.part_id)
         variance = variances_map.get(variance_key)
+
+        # Get cached tag record
+        tag = tags_map.get(count_record.tag_number) if count_record.tag_number else None
+
+        # Build snapshot strings efficiently (avoid if/else for each field)
+        physical_location_name = count_record.physical_location.name if count_record.physical_location else ""
+        sub_location_name = count_record.sub_location.name if count_record.sub_location else ""
 
         audit_records_to_create.append(
             AuditRecord(
@@ -60,10 +131,10 @@ def generate_audit_records(audit_plan, count_records):
                 physical_location=count_record.physical_location,
                 sub_location=count_record.sub_location,
                 variance=variance,
-                tag_number=count_record.tag_number,
+                tag_number=tag,
                 sap_location_code=count_record.sap_location.code,
-                physical_location_snapshot=count_record.physical_location.name if count_record.physical_location else "",
-                sub_location_snapshot=count_record.sub_location.name if count_record.sub_location else "",
+                physical_location_snapshot=physical_location_name,
+                sub_location_snapshot=sub_location_name,
                 tag_number_snapshot=count_record.tag_number,
                 part_number_snapshot=count_record.part.part_number,
                 count_quantity_snapshot=count_record.quantity,
@@ -257,6 +328,7 @@ def generate_top_80_candidates(plan_ref, target_count, top_80_target):
     # Single bulk create for all candidates
     if candidates_to_create:
         AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
+        link_candidates_to_audit_records(plan_ref, book_set, in_top80=True, selection_reason="Top 80% Value")
 
     return top_80_count_real, small_audit
 
@@ -388,6 +460,7 @@ def generate_top_variance_candidates(plan_ref, top_variance_target):
     # Single bulk create for all candidates
     if candidates_to_create:
         AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
+        link_candidates_to_audit_records(plan_ref, variance_set, in_top80=False, selection_reason="High Abs Variance")
 
     return variance_count_real
 
@@ -520,5 +593,6 @@ def generate_top_map_candidates(plan_ref, top_map_target):
     # Single bulk create for all candidates
     if candidates_to_create:
         AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
+        link_candidates_to_audit_records(plan_ref, map_set, in_top80=False, selection_reason="High MAP Price")
 
     return map_count_real

@@ -4,7 +4,7 @@ from core.models import TimeStampedModel
 from core.constants import PRICE_DECIMAL_PLACES, PRICE_MAX_DIGITS, QUANTITY_DECIMAL_PLACES, QUANTITY_MAX_DIGITS
 from cycles.app_models.cycle_models import PICycle
 from cycles.app_models.inventory_models import PartMaster
-from site_setting.models import Plant
+from site_setting.models import Plant, SAPLocation
 from django.contrib.auth.models import User
 
 
@@ -12,6 +12,7 @@ class CycleVariance(models.Model):
     plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="cycle_variances")
     cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="cycle_variances")
     part = models.ForeignKey(PartMaster, on_delete=models.CASCADE, related_name="cycle_variances")
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, related_name="cycle_variances", null=True, blank=True)
     sap_department = models.CharField(max_length=63, blank=True)
     sap_code = models.CharField(max_length=16)
     sap_inventory_type = models.CharField(max_length=15)  # SAP_INVENTORY_TYPE

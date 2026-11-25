@@ -1,5 +1,5 @@
 from audit.app_functions.planning import generate_audit_records, regenerate_candidates
-from audit.models import AuditPlan, AuditRecord
+from audit.models import AuditPlan
 from core._imports_for_views import *
 from cycles.app_models.cycle_models import CyclePhysicalLocation, CycleSAPLocation
 from count.models import CountRecord
@@ -53,6 +53,7 @@ def audit_planning(request):
     cycle_name = active_cycle.name
     cycle_plan_count = AuditPlan.objects.filter(cycle=active_cycle).count()
     context["audit_plan_name"] = f"{cycle_name} - Audit {cycle_plan_count + 1}"
+    context["plans"] = AuditPlan.objects.filter(cycle=active_cycle)
     return render(request, "audit/planning.html", context)
 
 
@@ -154,10 +155,11 @@ def audit_planning_create(request):
             variance_pct=variance_pct,
             created_by=curr_user,
             updated_by=curr_user,
-            status="DRAFT",
+            status="Draft",
         )
 
-        audit_records = generate_audit_records(audit_plan, count_records)
+        generate_audit_records(audit_plan, count_records)
+        regenerate_candidates(audit_plan)
 
         messages.success(request, f"Audit Plan '{plan_name}' created successfully with {total_records} available records.")
         return redirect("audit:audit_plan_detail", plan_id=audit_plan.id)
@@ -211,9 +213,24 @@ def audit_plan_detail(request, plan_id):
     return render(request, "audit/plan_detail.html", context)
 
 
-def test_top_80(request):
-    plan_name = "TCGB Q3 2026 PI - Audit 1"
-    plan_ref = AuditPlan.objects.filter(name=plan_name).first()
-    audit_records = AuditRecord.objects.filter(plan=plan_ref)  # Replace with the appropriate plan reference
-    regenerate_candidates(plan_ref, audit_records)
-    return json_success("Top 80% candidates regenerated.")
+@login_required
+def audit_input(request, plan_id):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to input audit data. {msg}"))
+        return redirect("core:home")
+
+    audit_plan = AuditPlan.objects.filter(id=plan_id).first()
+    if not audit_plan:
+        messages.error(request, "Audit Plan not found.")
+        return redirect("audit:audit_planning")
+    context["audit_plan"] = audit_plan
+
+    return render(request, "audit/audit_input.html", context)

@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Audit Planning | PI Platform{% endblock %}
 {% block body %}
-<div class="page-heading"><div><h1>Audit Planning</h1><a id="regenerate-top-80" class="btn btn-primary" href="{% url 'audit:test_top_80' %}">Regenerate Top 80%</a><p class="page-sub">Set the audit scope and capacity, then let the system recommend count records for review before the sample is frozen.</p></div></div>
+<div class="page-heading"><div><h1>Audit Planning</h1><p class="page-sub">Set the audit scope and capacity, then let the system recommend count records for review before the sample is frozen.</p></div></div>
 
 {% if may_create %}
 <form method="post" class="audit-builder" id="audit-builder" action="{% url 'audit:audit_planning_create' %}">
@@ -99,12 +99,17 @@
   {% for item in plans %}
   <tr>
     <td><b>{{ item.name }}</b></td>
-    <td>{{ item.department.name }}</td>
+    <td>{{ item.department }}</td>
     <td class="num">{{ item.target_count }}</td>
-    <td class="num">{{ item.selected_total|default:0 }}</td>
-    <td><span class="chip">{{ item.get_status_display }}</span></td>
+    <td class="num">{{ item.real_total_count|default:0 }}</td>
+    <td><span class="chip">{{ item.status }}</span></td>
     <td class="mut">{{ item.updated_at|date:"Y-m-d H:i" }}</td>
-    <td><a class="btn ghost" href="{% url 'core:home' item.plan_id %}">{% if item.status == 'DRAFT' %}Review{% else %}View{% endif %}</a></td>
+    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'audit:audit_plan_detail' item.id %}">{% if item.status == 'Draft' %}Review{% else %}View{% endif %}</a>
+
+  {% if item.status != 'Draft' %}
+    <a class="btn btn-sm btn-primary" href="{% url 'audit:audit_input' item.id %}">Start Input</a>
+  {% endif %}
+    </td>
   </tr>
   {% empty %}<tr><td colspan="7" class="mut">No Audit Plans for this PI yet.</td></tr>{% endfor %}
   </tbody></table></div>
