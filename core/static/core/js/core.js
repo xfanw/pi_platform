@@ -11,3 +11,19 @@ function show_under_developing() {
         text: "This feature is under development.",
     });
 }
+
+function show_loader(show_text = false) {
+    $("body").addClass("loader-open");
+    $("#loader-modal").show();
+    if (show_text) {
+        $("#loader-modal-text").show();
+    } else {
+        $("#loader-modal-text").hide();
+    }
+}
+
+function hide_loader() {
+    $("#loader-modal").hide();
+    $("#loader-modal-text").hide();
+    $("body").removeClass("loader-open");
+}

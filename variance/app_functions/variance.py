@@ -34,6 +34,7 @@ def create_variance(sap_book_ref, count_ref):
         plant=plant,
         cycle=cycle,
         part=part,
+        sap_location=sap_location,
         sap_code=sap_code,
         sap_department=sap_department,
         sap_inventory_type=sap_inventory_type or "",
@@ -68,7 +69,9 @@ def update_variance_sap(sap_ref):
         var_qty = count_sum - sap_qty
         var_ref.sap_quantity = sap_qty
         var_ref.variance_quantity = var_qty
-        if sap_location.inventory_type == "CONSIGNED":
+        var_ref.sap_location = sap_location
+        var_ref.sap_inventory_type = sap_location.inventory_type if sap_location else None
+        if sap_location and sap_location.inventory_type == "CONSIGNED":
             var_ref.variance_value = 0
         else:
             var_ref.variance_value = var_qty * var_ref.map_price
@@ -102,7 +105,7 @@ def update_variance_count(count_ref):
         var_ref.count_quantity = count_sum
         var_qty = count_sum - (var_ref.sap_quantity or 0)
         var_ref.variance_quantity = var_qty
-        if sap_location.inventory_type == "CONSIGNED":
+        if sap_location and sap_location.inventory_type == "CONSIGNED":
             var_ref.variance_value = 0
         else:
             var_ref.variance_value = var_qty * var_ref.map_price
@@ -137,7 +140,7 @@ def delete_variance_count(count_ref):
         var_ref.count_quantity = count_sum
         var_qty = count_sum - (var_ref.sap_quantity or 0)
         var_ref.variance_quantity = var_qty
-        if sap_location.inventory_type == "CONSIGNED":
+        if sap_location and sap_location.inventory_type == "CONSIGNED":
             var_ref.variance_value = 0
         else:
             var_ref.variance_value = var_qty * var_ref.map_price

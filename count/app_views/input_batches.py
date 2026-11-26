@@ -5,6 +5,7 @@ from core._imports_for_views import *
 from core.context_processors import get_basic_info
 from core.excel_file_handler.count_batch import count_batch_upload, count_batch_validate, count_excel_bytes
 from count.models import CountIntakeException, CountRecord, CycleTagDetail, TempCountLoadDetail, CountLoadBatch
+from variance.app_functions.variance import delete_variance_count, update_variance_count
 
 PERMISSION = "Count.Count Result Upload"
 
@@ -27,38 +28,7 @@ def count_upload(request):
     if not active_cycle:
         return render(request, "count/batches.html", context)
 
-    # Search and Filter
-    search_data = request.GET
-    search = search_data.get("search", "").strip()
-    sap_location_filter = search_data.get("sap_location", "").strip()
-    location_filter = search_data.get("location", "").strip()
-    sub_location_filter = search_data.get("sub_location", "").strip()
-    count_record_set = CountRecord.objects.filter(cycle=active_cycle, source="Manual Key-in")
-    has_search = False
-    if search:
-        has_search = True
-        count_record_set = count_record_set.filter(
-            Q(count__count_number__icontains=search)
-            | Q(sap_location__code__icontains=search)
-            | Q(sap_location__department__icontains=search)
-            | Q(physical_location__name__icontains=search)
-            | Q(sub_location__name__icontains=search)
-            | Q(counter_name__icontains=search)
-        )
-    if sap_location_filter:
-        has_search = True
-        count_record_set = count_record_set.filter(
-            Q(sap_location__code__icontains=sap_location_filter) | Q(sap_location__department__icontains=sap_location_filter)
-        )
-
-    context["search"] = search
-    context["location_filter"] = location_filter
-    context["sap_location_filter"] = sap_location_filter
-    context["sub_location_filter"] = sub_location_filter
-    context["count_record_set"] = count_record_set
-
-    if has_search and not count_record_set.exists():
-        messages.warning(request, "No Count Records found matching your search criteria.")
+    context["batches"] = CountLoadBatch.objects.filter(cycle=active_cycle).order_by("-created_at")[:50]
     return render(request, "count/batches.html", context)
 
 
@@ -269,6 +239,9 @@ def count_batch_confirm(request, batch_id):
         return redirect("count:count_batch", batch_id=batch_id)
 
     for record in new_count_record_set:
+        update_variance_count(record)
+
+    for record in new_count_record_set:
         if record.tag_number:
             CycleTagDetail.objects.filter(tag_number=record.tag_number).update(
                 count_record=record, exception_record=None, is_counted=True, updated_by=curr_user
@@ -279,3 +252,54 @@ def count_batch_confirm(request, batch_id):
                 count_record=None, exception_record=ex_record, is_counted=True, updated_by=curr_user
             )
     return redirect("count:count_batch", batch_id=batch_ref.id)
+
+
+@login_required
+def cuount_batch_revoke(request, batch_id):
+    curr_user = request.user
+    curr_time = datetime.now().astimezone()
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    active_cycle_ref = context["cycle_ref"]
+    if not active_cycle_ref:
+        messages.error(request, "No active cycle is available.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to create part lists. {msg}"))
+        return redirect("count:count_upload")
+
+    batch_ref = CountLoadBatch.objects.filter(id=batch_id).first()
+    if not batch_ref:
+        messages.error(request, "Batch not found.")
+        return redirect("count:count_upload")
+
+    count_records = CountRecord.objects.filter(batch=batch_ref)
+    new_count_ex_record_set = CountIntakeException.objects.filter(batch=batch_ref)
+    for record in count_records:
+        delete_variance_count(record)
+
+    for record in count_records:
+        if record.tag_number:
+            CycleTagDetail.objects.filter(tag_number=record.tag_number).update(
+                count_record=None, exception_record=None, is_counted=False, updated_by=curr_user
+            )
+    for ex_record in new_count_ex_record_set:
+        if ex_record.tag_number:
+            CycleTagDetail.objects.filter(tag_number=ex_record.tag_number).update(
+                count_record=None, exception_record=None, is_counted=False, updated_by=curr_user
+            )
+    count_records.delete()
+    new_count_ex_record_set.delete()
+    TempCountLoadDetail.objects.filter(batch=batch_ref).delete()
+    batch_ref.status = "REVERSED"
+    batch_ref.updated_by = curr_user
+    batch_ref.updated_at = curr_time
+    batch_ref.save()
+    messages.success(request, "Batch successfully revoked.")
+    return redirect("count:count_upload")

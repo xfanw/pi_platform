@@ -1,6 +1,7 @@
 from django.urls import path
 
 from count.app_views.input_manual import count_manual, count_manual_create, count_manual_update, count_manual_delete
+from count.app_views.input_batches import cuount_batch_revoke
 from count.app_views.input_tag import count_tag, count_tag_create, count_tag_update
 from count.app_views.input_batches import (
     count_batch,
@@ -29,4 +30,5 @@ urlpatterns += [
     path("count_file_upload", count_file_upload, name="count_file_upload"),
     path("count_batch/<int:batch_id>", count_batch, name="count_batch"),
     path("count_batch_confirm/<int:batch_id>", count_batch_confirm, name="count_batch_confirm"),
+    path("count_batch_revoke/<int:batch_id>", cuount_batch_revoke, name="count_batch_revoke"),
 ]

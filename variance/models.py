@@ -12,7 +12,7 @@ class CycleVariance(models.Model):
     plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name="cycle_variances")
     cycle = models.ForeignKey(PICycle, on_delete=models.CASCADE, related_name="cycle_variances")
     part = models.ForeignKey(PartMaster, on_delete=models.CASCADE, related_name="cycle_variances")
-    sap_location = models.ForeignKey(SAPLocation, on_delete=models.CASCADE, related_name="cycle_variances", null=True, blank=True)
+    sap_location = models.ForeignKey(SAPLocation, on_delete=models.SET_NULL, related_name="cycle_variances", null=True, blank=True)
     sap_department = models.CharField(max_length=63, blank=True)
     sap_code = models.CharField(max_length=16)
     sap_inventory_type = models.CharField(max_length=15)  # SAP_INVENTORY_TYPE

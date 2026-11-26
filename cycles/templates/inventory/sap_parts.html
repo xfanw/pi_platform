@@ -36,7 +36,7 @@
   </div>
   <div class="pane upload-pane">
     <div class="pane-title">Upload via template (replaces snapshot)</div>
-    <form method="post" enctype="multipart/form-data" class="frow" action="{% url 'cycles:sap_part_file_upload' %}">
+    <form method="post" enctype="multipart/form-data" class="frow" action="{% url 'cycles:sap_part_file_upload' %}" onsubmit="show_loader(true)">
       {% csrf_token %}
       <div><label>Completed template (.xlsx)</label><input type="file" name="sap_part_file" accept=".xlsx" required></div>
       <button class='btn btn-sm btn-primary' type="submit">Upload &amp; Validate</button>

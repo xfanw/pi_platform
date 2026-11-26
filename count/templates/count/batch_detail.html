@@ -3,13 +3,13 @@
 {% block body %}
 <div class="page-head">
   <div>
-    <a class="back-link" href="{% url 'count:count_upload' %}">← Counter Roster</a>
+    <a class="back-link" href="{% url 'count:count_upload' %}">← Count Result Upload</a>
     <h1>{% if batch.status == 'Imported' %}Imported Onboarding File{% else %}FilePreview{% endif %}</h1>
     <p class="page-sub">{{ batch.source_filename }} ·  uploaded {{ batch.created_at|date:"Y-m-d H:i" }}</p>
   </div>
   <div class="page-actions">
     {% if batch.status == 'Preview' and batch.error_count == 0 %}
-    <form method="post" action="{% url 'count:count_batch_confirm' batch_id=batch.id %}">
+    <form method="post" action="{% url 'count:count_batch_confirm' batch_id=batch.id %}" onsubmit="show_loader(true)">
       {% csrf_token %}<button class='btn btn-primary' type="submit">Confirm Import</button>
     </form>
     {% endif %}

@@ -10,7 +10,7 @@
   </div>
   <div class="page-actions">
     {% if batch.status == 'Preview' and batch.error_count == 0 %}
-    <form method="post" action="{% url 'cycles:sap_part_batch_confirm' batch_id=batch.id %}">
+    <form method="post" action="{% url 'cycles:sap_part_batch_confirm' batch_id=batch.id %}" onsubmit="show_loader(true)">
       {% csrf_token %}<button class='btn btn-primary' type="submit">Confirm Import</button>
     </form>
     {% endif %}

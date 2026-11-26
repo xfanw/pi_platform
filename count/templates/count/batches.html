@@ -21,7 +21,7 @@
 
 <section class="card channel-upload-card">
   <div class="pane-title">Upload Completed Count Template</div>
-  <form method="post" enctype="multipart/form-data" class="channel-upload-form" action="{% url 'count:count_file_upload' %}">{% csrf_token %}
+  <form method="post" enctype="multipart/form-data" class="channel-upload-form" action="{% url 'count:count_file_upload' %}" onsubmit="show_loader(true)">{% csrf_token %}
     <div><label>Completed .xlsx</label><input type="file" name="file" accept=".xlsx" required></div>
     <div class="grow"><label>Batch note <span class="optional">optional</span></label><input name="note" maxlength="500" placeholder="Shift, department, source file or interface reference"></div>
     <button type="submit" class="btn btn-sm btn-primary">Upload</button>
@@ -31,8 +31,27 @@
 </section>
 <section class="card">
   <div class="table-section-head"><div><h2>Batch History</h2><span class="mut">Latest 50 {{ page_title }} batches. Open a batch to inspect rows and edit results, or reverse it here.</span></div></div>
-  <div class="scroll"><table class="count-batch-history"><thead><tr><th>Batch</th><th>File / Note</th><th>Status</th><th class="num">Rows</th><th class="num">Accepted</th><th class="num">Pending</th><th class="num">Errors</th><th>Created</th><th>Actions</th></tr></thead><tbody>
-    {% for item in batches %}<tr class="{% if item.status == 'REVERSED' %}mut{% endif %}"><td class="mono">{{ item.batch_id|stringformat:'s'|slice:':8' }}</td><td>{{ item.source_filename|default:'—' }}{% if item.note %}<br><span class="mut">{{ item.note }}</span>{% endif %}</td><td><span class="chip {% if item.status == 'FAILED' or item.status == 'PARTIAL' %}red{% endif %}">{{ item.get_status_display }}</span></td><td class="num">{{ item.row_count }}</td><td class="num">{{ item.accepted_count }}</td><td class="num">{{ item.pending_count }}</td><td class="num {% if item.rejected_count %}neg{% endif %}">{{ item.rejected_count }}</td><td class="mut">{{ item.created_at|date:'Y-m-d H:i' }} · {{ item.created_by.username|default:'system' }}</td><td><div class="batch-row-actions"><a class="btn ghost small" href="{% url 'count:count-batch-detail' item.batch_id %}">Open Detail</a>{% if item.status != 'REVERSED' and item.status != 'PROCESSING' %}<form method="post" action="{% url 'count:count-batch-reverse' item.batch_id %}" onsubmit="return confirm('Reverse this entire batch? Its accepted records will stop affecting Count Results.');">{% csrf_token %}<input type="hidden" name="row_version" value="{{ item.row_version }}"><button class="btn danger small" type="submit">Reverse</button></form>{% endif %}</div></td></tr>
+  <div class="scroll"><table class="count-batch-history"><thead><tr><th>File / Note</th><th>Status</th><th class="num">Rows</th><th class="num">Ready</th><th class="num">Errors</th><th>Created</th><th>Actions</th></tr></thead><tbody>
+    {% for item in batches %}
+    <tr class="{% if item.status == 'REVERSED' %}mut{% endif %}">
+      <td>{{ item.source_filename|default:'—' }}{% if item.note %}<br><span class="mut">{{ item.note }}</span>{% endif %}</td>
+      <td><span class="chip {% if item.status == 'Error' %}red{% endif %}">{{ item.status }}</span></td>
+      <td class="num">{{ item.row_count }}</td>
+      <td class="num">{{ item.ready_count }}</td>
+      <td class="num {% if item.error_count %}neg{% endif %}">{{ item.error_count }}</td>
+      <td class="mut">{{ item.created_at|date:'Y-m-d H:i' }} · {{ item.created_by.username|default:'system' }}</td>
+      <td>
+        <div class="batch-row-actions">
+      {% if item.status == 'REVERSED' %}
+      <span>Reversed</span>
+      {% else %}
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_batch' item.id %}">Open Detail</a>
+        {% if item.status == 'Imported' %}
+        <a class="btn btn-sm btn-outline-danger" href="{% url 'count:count_batch_revoke' item.id %}">Revoke</a>
+        {% endif %}
+      {% endif %}
+      </div></td>
+    </tr>
     {% empty %}<tr><td colspan="9" class="mut">No {{ page_title }} batches yet.</td></tr>{% endfor %}
   </tbody></table></div>
 </section>

@@ -127,7 +127,7 @@
     {% if "Variance" in page_access_group %}
     <div class="sec">Variance</div>
     <div class="nav-items">
-      {% if "Variance.Live Variance Report" in page_access_list %}<a href="{% url 'variance:variance_live_report' %}" class="{% if request.resolver_match.url_name == 'variance_live_report' %}on{% endif %}">Live Variance Report</a>{% endif %}
+      {% if "Variance.Live Variance Report" in page_access_list %}<a onclick="show_loader(true)" href="{% url 'variance:variance_live_report' %}" class="{% if request.resolver_match.url_name == 'variance_live_report' %}on{% endif %}">Live Variance Report</a>{% endif %}
       {% if "Variance.Variance by PN" in page_access_list %}<a href="{% url 'variance:variance_by_part' %}" class="{% if request.resolver_match.url_name == 'variance_by_part' %}on{% endif %}">Variance by PN</a>{% endif %}
       {% if "Variance.Variance by Location" in page_access_list %}<a href="{% url 'variance:variance_by_location' %}" class="{% if request.resolver_match.url_name == 'variance_by_location' %}on{% endif %}">Variance by Location</a>{% endif %}
       {% if "Variance.Post Batches" in page_access_list %}<a href="{% url 'variance:post_batches' %}" class="{% if request.resolver_match.url_name == 'post_batches' or request.resolver_match.url_name == 'post_batches_detail' %}on{% endif %}">Post Batches</a>{% endif %}
@@ -161,9 +161,7 @@
   </nav>
   <main class="content">
     <div class='row'>
-        <div class='col-md-12'>
-            {% include "core/includes/msg_loader.html" %}
-        </div>
+        {% include "core/includes/msg_loader.html" %}
     </div>
     {% block body %}{%endblock %}
     {% include "core/includes/paginator.html" %}
@@ -272,7 +270,7 @@ new MutationObserver(mutations => mutations.forEach(mutation => mutation.addedNo
 <script src="{% static 'core/fontawesome-7.3.1/all.js'%}?v=1.0"></script>
 <script src="{% static 'core/sweetalert2-11.26/all.js' %}?v=1.0"></script>
 <script src="{% static 'core/sweetalert2-11.26/swal_msg.js' %}?v=1.0"></script>
-<script src="{% static 'core/js/core.js'%}?v=1.0"></script>
+<script src="{% static 'core/js/core.js'%}?v=1.1"></script>
 
 
 {% block scripts %}{% endblock %}
