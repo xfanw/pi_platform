@@ -111,7 +111,6 @@ def variance_live_report(request):
 
     pagination_context = get_paginated_obj(rows_ordered, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
 
-    context.update(pagination_context)
     context["variance_row_count"] = len(rows_ordered)
     context.update(pagination_context)
     context.update(part_sap_matrix_context)
