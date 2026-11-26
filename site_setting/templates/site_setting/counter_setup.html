@@ -62,11 +62,12 @@
   <div class="table-section-head">
     <div><h2>People roster</h2><p class="mut">Deactivating a person prevents new selection while preserving attribution on existing Count Records.</p></div>
     <form method="get" class="frow compact-form"><div><label>Search</label><input name="q" value="{{ search }}" placeholder="ID, name, email, ownership or SAP"></div><button class="btn btn-sm btn-primary" type="submit">Search</button>{% if search %}<a class="btn btn-sm btn-outline-primary" href="{% url 'site_setting:counter_setup' %}">Clear</a>{% endif %}</form>
+    <span class="record-count">{{ roster_row_count }} row{{ roster_row_count|pluralize }}</span>
   </div>
   <div class="scroll"><table>
     <thead><tr><th>Employee ID</th><th>Display Name</th><th>Ownership</th><th>SAP Location</th><th>Status</th><th>Updated</th><th>Action</th></tr></thead>
     <tbody>
-    {% for item in roster %}
+    {% for item in current_page_obj.object_list %}
       <tr>
         <td class="mono">{{ item.employee_id }}</td><td><b>{{ item.display_name }}</b></td>
         <td>{{ item.department.name|default:"All" }}</td><td>{{ item.sap_location.code|default:"All" }}</td>

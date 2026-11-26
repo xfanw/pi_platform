@@ -63,10 +63,10 @@
 </section>
 
 <section class="card">
-  <div class="table-section-head"><h2>SAP book inventory</h2></div>
+  <div class="table-section-head"><h2>SAP book inventory</h2><span class="record-count">{{ sap_part_line_row_count }} row{{ sap_part_line_row_count|pluralize }}</span></div>
   <div class="scroll"><table class="book-table">
     <thead><tr><th>P/N</th><th>Description</th><th>BU</th><th>SAP Location</th><th>Ownership</th><th>Inventory Type</th><th class="num">Qty</th><th>Updated</th>{% if may_change %}<th></th>{% endif %}</tr></thead>
-    <tbody>{% for item in sap_part_lines %}
+    <tbody>{% for item in current_page_obj.object_list %}
       <tr>
         <td><b>{{ item.part.part_number }}</b></td>
         <td>{{ item.part.description }}</td>

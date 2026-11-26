@@ -52,9 +52,9 @@
 <section class="card location-data-card">
   <div class="table-section-head"><div><h2>Locations</h2>
   <p class="mut">A Location can receive Count Results from multiple intake channels. Inactive rows remain in history.</p>
-  </div><span class="record-count">{{ location_rows|length }} row{{ location_rows|length|pluralize }}</span></div>
+  </div><span class="record-count">{{ location_row_count }} rows</span></div>
   <div class="scroll"><table class="location-table"><thead><tr><th>Ownership</th><th>SAP Location</th><th>Physical Location</th><th class="center">Sub-locations</th><th class="center">Active</th><th>Action</th></tr></thead><tbody>
-  {% for item in location_rows %}
+  {% for item in current_page_obj %}
   <tr>
     <td><span class="chip">{{ item.sap_location.department }}</span></td>
     <td><b>{{ item.sap_location.code }}</b></td>

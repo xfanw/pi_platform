@@ -1,5 +1,6 @@
 from access_control.models import CounterOnboardingRow, CounterRoster, UserOnboardingBatch
 from core._imports_for_views import *
+from core.app_functions import get_paginated_obj
 from core.excel_file_handler.setting_counter_roster import counter_batch_validate, counter_roster_excel_bytes, counter_batch_upload
 from site_setting.models import SAPLocation
 
@@ -34,7 +35,11 @@ def counter_setup(request):
             | Q(department__icontains=search)
             | Q(sap_location__code__icontains=search)
         )
-    context["roster"] = roster
+    
+    # Bottom Display
+    updated_context = get_paginated_obj(roster, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
+    context["roster_row_count"] = roster.count()
+    context.update(updated_context)
     return render(request, "site_setting/counter_setup.html", context)
 
 

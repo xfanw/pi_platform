@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from core._imports_for_views import *
+from core.app_functions import get_paginated_obj
 from core.context_processors import get_basic_info
 from core.excel_file_handler.inventory_ex_part import ex_part_batch_upload, ex_part_batch_validate, ex_part_excel_bytes
 from cycles.models import ExcludedPart, PartMaster, TempExPartDetail, TempExPartMain
@@ -48,7 +49,12 @@ def ex_part_setup(request):
     context["search"] = search
     context["sap_location_filter"] = sap_location_filter
     context["sap_locations"] = SAPLocation.objects.filter(plant=plant).order_by("code")
-    context["ex_part_lines"] = ex_set.order_by("part__part_number", "sap_location__code")
+    
+    # Bottom Display
+    ex_part_lines = ex_set.order_by("part__part_number", "sap_location__code")
+    updated_context = get_paginated_obj(ex_part_lines, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
+    context["ex_part_line_row_count"] = ex_part_lines.count()
+    context.update(updated_context)
 
     if (search or sap_location_filter) and not ex_set.exists():
         messages.warning(request, "No excluded P/Ns match this search.")

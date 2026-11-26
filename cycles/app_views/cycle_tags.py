@@ -1,4 +1,5 @@
 from core._imports_for_views import *
+from core.app_functions import get_paginated_obj
 from core.context_processors import get_basic_info
 from core.excel_file_handler.cycle_tag_range import tag_batch_upload, tag_batch_validate, tag_range_excel_bytes
 from count.models import CycleTagDetail
@@ -88,7 +89,12 @@ def tag_setup(request):
     context["location_filter"] = location_filter
     context["sap_location_filter"] = sap_location_filter
     context["sub_location_filter"] = sub_location_filter
-    context["tag_ranges"] = tag_range_set
+    
+    # Bottom Display
+    tag_range_rows = tag_range_set.order_by("-id").select_related("sap_location", "physical_location", "sub_location")
+    updated_context = get_paginated_obj(tag_range_rows, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
+    context["tag_range_row_count"] = tag_range_rows.count()
+    context.update(updated_context)
 
     if has_search and not tag_range_set.exists():
         messages.warning(request, "No Tag Ranges found matching your search criteria.")

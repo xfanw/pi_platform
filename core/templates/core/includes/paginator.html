@@ -1,0 +1,99 @@
+{% if is_pagination %}
+    <div class='col-md-12 row mt-3'>
+        <div class='col-md-3'>
+            <div class='input-group'>
+                <div class='input-group-text border-0 bg-transparent'>Show:</div>
+                <input class='form-control' id='per_page_element' value='{{ per_page_element }}' style='max-width:4em !important'>
+                <div class='input-group-text border-0 bg-transparent'>Per Page</div>
+            </div>
+        </div>
+        <div class='col-md-9 text-end'>
+          <span id='page_nav'>
+              <button class='btn btn-sm btn-outline-info' onclick="toPage(1)">&lArr; First</button>
+              {% if current_page_obj.has_previous %}
+                  <button class='btn btn-sm btn-outline-info' onclick="toPage({{ current_page_obj.number|add:'-1' }})">&lsaquo; Previous</button>
+              {% endif %}
+
+              {% for page_number in current_elided_page_range %}
+                  {% if page_number == current_page_obj.number %}
+                      <button class="btn btn-sm btn-info">{{ page_number }}</button>
+                  {% else %}
+                      <button class="btn btn-sm btn-outline-info"
+                              onclick="toPage({{ page_number }})">{{ page_number }}</button>
+                  {% endif %}
+              {% endfor %}
+
+              {% if current_page_obj.has_next %}
+                  <button class='btn btn-sm btn-outline-info' onclick="toPage({{ current_page_obj.number|add:'1' }})">Next &rsaquo; </button>
+              {% endif %}
+              <button class='btn btn-sm btn-outline-info' onclick="toPage({{ current_page_obj.paginator.num_pages }})">Last &rArr;</button>
+          </span>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+
+function toPage(target) {
+    let current_url = window.location.href;
+    let url_components = current_url.split("?");
+    let next_url = "";
+    let final_search = "";
+
+    if (url_components.length <= 1) {
+        next_url = `${current_url}?page_num=${target}`;
+    } else {
+        if (!url_components[1].includes("page_num=")) {
+            next_url = `${current_url}&page_num=${target}`;
+        } else {
+            let search_components = url_components[1].split("&");
+            for (let search_part of search_components) {
+                if (search_part.includes("page_num=")) {
+                    search_part = `page_num=${target}`;
+                }
+
+                if (final_search === "") {
+                    final_search += `${search_part}`;
+                } else {
+                    final_search += `&${search_part}`;
+                }
+            }
+            next_url = `${url_components[0]}?${final_search}`;
+        }
+    }
+
+    window.location.replace(next_url);
+}
+
+$("#per_page_element").change(function () {
+    let target = $(this).val();
+    let current_url = window.location.href;
+    let url_components = current_url.split("?");
+    let next_url = "";
+    let final_search = "";
+
+    if (url_components.length <= 1) {
+        next_url = `${current_url}?per_page_element=${target}`;
+    } else {
+        if (!url_components[1].includes("per_page_element=")) {
+            next_url = `${current_url}&per_page_element=${target}`;
+        } else {
+            let search_components = url_components[1].split("&");
+            for (let search_part of search_components) {
+                if (search_part.includes("per_page_element=")) {
+                    search_part = `per_page_element=${target}`;
+                }
+
+                if (final_search === "") {
+                    final_search += `${search_part}`;
+                } else {
+                    final_search += `&${search_part}`;
+                }
+            }
+            next_url = `${url_components[0]}?${final_search}`;
+        }
+    }
+
+    window.location.replace(next_url);
+});
+</script>

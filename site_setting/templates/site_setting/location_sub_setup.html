@@ -49,14 +49,14 @@
   <div class="filter-actions"><button class="btn btn-sm btn-primary" type="submit">Apply</button><a class="btn btn-sm btn-outline-primary" href="{% url 'site_setting:sub_location_setup' %}">Clear</a></div>
 </form></section>
 
-<section class="card location-data-card"><div class="table-section-head"><div><h2>Sub-locations</h2><p class="mut">Count intake accepts a Sub-location only when Current PI shows Included.</p></div><span class="record-count">{{ sub_location_rows|length }} row{{ sub_location_rows|length|pluralize }}</span></div><div class="scroll"><table class="location-table sub-location-table"><thead><tr><th>Ownership</th><th>SAP Location</th><th>Location</th><th>Sub-location</th><th>Current PI</th><th class="center">Active</th><th>Action</th></tr></thead><tbody>
-{% for item in sub_location_rows %}
+<section class="card location-data-card"><div class="table-section-head"><div><h2>Sub-locations</h2><p class="mut">Count intake accepts a Sub-location only when Current PI shows Included.</p></div><span class="record-count">{{ sub_location_row_count }} row{{ sub_location_row_count|pluralize }}</span></div><div class="scroll"><table class="location-table sub-location-table"><thead><tr><th>Ownership</th><th>SAP Location</th><th>Location</th><th>Sub-location</th><th>Current PI</th><th class="center">Active</th><th>Action</th></tr></thead><tbody>
+{% for item in current_page_obj.object_list %}
 <tr>
   <td><span class="chip">{{ item.physical_location.sap_location.department }}</span></td>
   <td><b>{{ item.physical_location.sap_location.code }}</b></td>
   <td>{{ item.physical_location.name }}</td>
   <td>{{ item.name }}</td>
-  <td>{% if item.in_current_pi %}<span class="status posted">Included</span>{% else %}<span class="status muted">Not included</span>{% endif %}</td>
+  <td>{% if item.id in sub_location_in_current_pi %}<span class="status posted">Included</span>{% else %}<span class="status muted">Not included</span>{% endif %}</td>
   <td class="center">
     <input data-readonly type="checkbox" name="is_active" id="is_active_{{ item.pk }}" value="active" 
     form="sub-location-{{ item.pk }}" {% if item.is_active %}checked{% endif %} aria-label="Sub-location active">
@@ -71,7 +71,8 @@
   </td>
 </tr>
 {% empty %}<tr><td colspan="7" class="mut">No Sub-locations match the current search and filters.</td></tr>{% endfor %}
-</tbody></table></div></section>
+</tbody></table></div>
+</section>
 {% endblock %}
 
 {% block scripts %}

@@ -35,10 +35,19 @@ def my_sap_loc(user, plant, curr_time=None):
     active_role_set = active_plant_roles(user, plant, curr_time=curr_time)
     if not active_role_set:
         return set()
-    if active_role_set.filter(sap_location__isnull=True).exists():
-        return set(SAPLocation.objects.filter(plant=plant, is_active=True).values_list("code", flat=True))
 
-    return set(active_role_set.filter(sap_location__isnull=False).values_list("sap_location__code", flat=True))
+    active_sap_set = set()
+    for role in active_role_set:
+        if role.sap_location:
+            active_sap_set.add(role.sap_location.code)
+        elif role.department:
+            active_sap_set.update(
+                SAPLocation.objects.filter(plant=plant, department=role.department, is_active=True).values_list("code", flat=True)
+            )
+        else:
+            active_sap_set.update(SAPLocation.objects.filter(plant=plant, is_active=True).values_list("code", flat=True))
+
+    return active_sap_set
 
 
 def check_permission(curr_user, plant, app_name, editable=False):

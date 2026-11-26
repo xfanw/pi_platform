@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 
 from core._imports_for_views import *
+from core.app_functions import get_paginated_obj
 from core.context_processors import get_basic_info
 from core.excel_file_handler.inventory_sap_part import sap_part_batch_upload, sap_part_batch_validate, sap_part_excel_bytes
 from cycles.app_models.cycle_models import CycleSAPLocation
@@ -60,7 +61,13 @@ def sap_part_setup(request):
     context["sap_locations"] = CycleSAPLocation.objects.filter(plant=plant, cycle=active_cycle, is_active=True).order_by(
         "sap_location__department", "sap_location__code"
     )
-    context["sap_part_lines"] = line_set.order_by("part__part_number", "sap_location__code")
+    
+    # Bottom Display
+    sap_part_lines = line_set.order_by("part__part_number", "sap_location__code")
+    updated_context = get_paginated_obj(sap_part_lines, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
+    context["sap_part_line_row_count"] = sap_part_lines.count()
+    context.update(updated_context)
+    
     if (search or sap_location_filter) and not line_set.exists():
         messages.warning(request, "No SAP inventory lines match this search.")
     return render(request, "inventory/sap_parts.html", context)

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.http import JsonResponse, HttpResponse
+from django.core.paginator import Paginator
 
 
 def json_msg(status, msg, **kwargs):
@@ -55,11 +56,6 @@ def json_warning(msg, **kwargs):
 def form_errors(form):
     error_msg = [error for field in form for error in field.errors]
     return error_msg
-    return "<br>".join(
-        f"{form.fields[field].label if field in form.fields else 'Form'}: {error}"
-        for field, errors in form.errors.items()
-        for error in errors
-    )
 
 
 def clean_errors(error_msg):
@@ -88,3 +84,21 @@ def swap_dict_key_value(original_dict):
     for key, value in original_dict.items():
         inverted_dict.setdefault(value, []).append(key)
     return inverted_dict
+
+
+def get_paginated_obj(queryset_obj, request_page=1, per_page_element=17):
+
+    # Frank's function for pagination
+    paginator = Paginator(queryset_obj, per_page_element, orphans=int(per_page_element) // 4)
+
+    curr_page = min(int(request_page), paginator.num_pages)
+    current_page_obj = paginator.get_page(curr_page)
+    current_elided_page_range = paginator.get_elided_page_range(curr_page, on_each_side=4)
+
+    context = {}
+    context["current_page_obj"] = current_page_obj
+    context["current_elided_page_range"] = current_elided_page_range
+    context["per_page_element"] = per_page_element
+    context["is_pagination"] = True
+
+    return context

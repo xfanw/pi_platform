@@ -1,4 +1,5 @@
 from core._imports_for_views import *
+from core.app_functions import get_paginated_obj
 from core.context_processors import get_basic_info
 from core.excel_file_handler.inventory_part import part_batch_upload, part_batch_validate, part_excel_bytes
 from cycles.app_models.inventory_models import TempPartDetail, TempPartMain
@@ -43,7 +44,12 @@ def part_setup(request):
         )
 
     context["search"] = search
-    context["part_ranges"] = part_range_set
+    
+    # Bottom Display
+    part_range_rows = part_range_set.order_by("-id")
+    updated_context = get_paginated_obj(part_range_rows, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
+    context["part_range_row_count"] = part_range_rows.count()
+    context.update(updated_context)
 
     if has_search and not part_range_set.exists():
         messages.warning(request, "No Part Numbers match this search..")

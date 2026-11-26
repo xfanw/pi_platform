@@ -1,3 +1,4 @@
+from access_control.app_functions import is_global_manager, is_plant_manager, my_sap_loc
 from core._imports_for_views import *
 from core.excel_file_handler.setting_location import (
     location_batch_upload,
@@ -18,7 +19,6 @@ from site_setting.models import (
     TempSubLocationDetail,
     TempSubLocationMain,
 )
-from site_setting.system_setting.sys_settings import SysSet
 
 # Create your views here.
 PERMISSION = "Setting.Location"
@@ -39,9 +39,14 @@ def location_setup(request):
         return redirect("core:home")
 
     sap_locations = SAPLocation.objects.filter(plant=plant, is_active=True)
+    # Filter from role assignment - only show locations user has access to
+    location_set = PhysicalLocation.objects.filter(plant=plant)
+    if not is_global_manager(curr_user) and not is_plant_manager(curr_user, plant):
+        my_sap_list = my_sap_loc(curr_user, plant)
+        location_set = location_set.filter(sap_location__code__in=my_sap_list)
+        sap_locations = sap_locations.filter(code__in=my_sap_list)
+    context["departments"] = sap_locations.values_list("department", flat=True).distinct()
     context["sap_locations"] = sap_locations
-    departments = SysSet().get_val("DEPARTMENTS")
-    context["departments"] = departments
 
     # Search and Filter
     search_data = request.GET
@@ -49,7 +54,6 @@ def location_setup(request):
     department_filter = search_data.get("department", "").strip()
     sap_location_filter = search_data.get("sap_location", "").strip()
     status_filter = search_data.get("status", "").strip().upper()
-    location_set = PhysicalLocation.objects.filter(plant=plant)
     has_search = False
     if search:
         has_search = True
@@ -76,7 +80,9 @@ def location_setup(request):
 
     # Bottom Display
     location_rows = location_set.order_by("-id").select_related("sap_location")
-    context["location_rows"] = location_rows
+    updated_context = get_paginated_obj(location_rows, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
+    context["location_row_count"] = location_rows.count()
+    context.update(updated_context)
 
     if has_search and not location_rows.exists():
         messages.warning(request, "No Physical Locations found matching your search criteria.")
@@ -359,10 +365,18 @@ def sub_location_setup(request):
     if not can_act:
         messages.error(request, mark_safe(f"You do NOT have permission to view sub location setup. {msg}"))
         return redirect("core:home")
-
+    active_cycle_ref = context["cycle_ref"]
     physical_locations = PhysicalLocation.objects.filter(plant=plant, is_active=True)
-    context["physical_locations"] = physical_locations
     sap_locations = SAPLocation.objects.filter(plant=plant, is_active=True)
+
+    # Filter from role assignment - only show sub-locations user has access to
+    sub_location_set = SubLocation.objects.filter(plant=plant)
+    if not is_global_manager(curr_user) and not is_plant_manager(curr_user, plant):
+        my_sap_list = my_sap_loc(curr_user, plant)
+        sub_location_set = sub_location_set.filter(physical_location__sap_location__code__in=my_sap_list)
+        physical_locations = physical_locations.filter(sap_location__code__in=my_sap_list)
+        sap_locations = sap_locations.filter(code__in=my_sap_list)
+    context["physical_locations"] = physical_locations
     context["sap_locations"] = sap_locations
 
     # Search and Filter
@@ -370,9 +384,8 @@ def sub_location_setup(request):
     search = search_data.get("search", "").strip()
     sap_location_filter = search_data.get("sap_location", "").strip()
     location_filter = search_data.get("location", "").strip()
-    scope_filter = search_data.get("scope", "").strip().upper()
-    status_filter = search_data.get("status", "").strip().upper()
-    sub_location_set = SubLocation.objects.filter(plant=plant)
+    scope_filter = search_data.get("scope", "CURRENT").strip().upper()
+    status_filter = search_data.get("status", "All").strip().upper()
     has_search = False
     if search:
         has_search = True
@@ -388,9 +401,15 @@ def sub_location_setup(request):
     if sap_location_filter:
         has_search = True
         sub_location_set = sub_location_set.filter(physical_location__sap_location__code=sap_location_filter)
+
     if scope_filter == "CURRENT":
+        sub_location_set = sub_location_set.filter(cycle_scope__cycle=active_cycle_ref, cycle_scope__is_active=True).distinct()
+    elif scope_filter == "OUTSIDE":
         has_search = True
-        # TODO: Sub-location scope filter logic to be implemented based on current PI
+        sub_location_set = sub_location_set.exclude(cycle_scope__cycle=active_cycle_ref, cycle_scope__is_active=True).distinct()
+    elif scope_filter == "ALL":
+        has_search = True
+
     if status_filter == "ACTIVE":
         has_search = True
         sub_location_set = sub_location_set.filter(is_active=True)
@@ -402,10 +421,16 @@ def sub_location_setup(request):
     context["location_filter"] = location_filter
     context["sap_location_filter"] = sap_location_filter
     context["status_filter"] = status_filter
+    context["scope_filter"] = scope_filter
 
     # Bottom Display
     sub_location_rows = sub_location_set.order_by("-id").select_related("physical_location__sap_location")
-    context["sub_location_rows"] = sub_location_rows
+    updated_context = get_paginated_obj(sub_location_rows, request.GET.get("page_num", 1), request.GET.get("per_page_element", 20))
+    context.update(updated_context)
+    context["sub_location_row_count"] = sub_location_rows.count()
+    context["sub_location_in_current_pi"] = CycleSubLocation.objects.filter(
+        sub_location__in=sub_location_rows, cycle=active_cycle_ref, is_active=True
+    ).values_list("sub_location_id", flat=True)
 
     if has_search and not sub_location_rows.exists():
         messages.warning(request, "No Physical Sub-locations found matching your search criteria.")
