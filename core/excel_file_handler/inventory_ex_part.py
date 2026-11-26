@@ -75,7 +75,9 @@ def ex_part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
             line_no += 1
             curr_valid = True
             row = tuple(row) + (None,) * (3 - len(row))
-            part_number, location_code, reason = (text_val(value) for value in row[:3])
+            part_number = text_val(row[0]).upper() if row[0] else ""
+            location_code = text_val(row[1]).upper() if row[1] else ""
+            reason = text_val(row[2]).strip() if row[2] else ""
             if not (part_number or location_code or reason):
                 continue
 

@@ -78,7 +78,7 @@ def part_batch_upload(curr_file, sheet_name, plant, cycle, actor):
             if row[0] or row[1] or row[2] or row[3]:
                 curr_error = []
                 curr_valid = True
-                curr_part_number = text_val(row[0]).strip() if row[0] else ""
+                curr_part_number = text_val(row[0]).strip().upper() if row[0] else ""
                 curr_desc = text_val(row[1]).strip() if row[1] else ""
                 curr_price = row[2] if row[2] else 0
                 curr_bu = text_val(row[3]).strip() if row[3] else ""

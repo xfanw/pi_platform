@@ -99,7 +99,7 @@ def count_batch_upload(curr_file, sheet_name, plant, note, cycle, actor):
             part_number, sap_code, location_name, sub_location_name, tag_number, quantity_value, counter_name = (
                 text_val(value) for value in row
             )
-            part_number = part_number.strip()
+            part_number = part_number.strip().upper() if part_number else ""
             sap_code = sap_code.strip().upper() if sap_code else ""
             location_name = location_name.strip() if location_name else ""
             sub_location_name = sub_location_name.strip() if sub_location_name else ""
