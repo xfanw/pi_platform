@@ -27,7 +27,7 @@
     <button type="submit" class="btn btn-sm btn-primary">Upload</button>
     <a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_template_download' %}">Download Template</a>
   </form>
-  <p class="mut">Every accepted row receives its own Count Record ID. Unknown P/Ns go to Pending Station. Loading the same file again creates a new batch, so reverse an incorrect batch before reloading it.</p>
+  <p class="mut">Every accepted row receives its own Count Record ID. Unknown P/Ns go to Pending Station. Loading the same file again creates a new batch, so <b class="text-danger fw-bold">REVERSE</b> an incorrect batch before reloading it.</p>
 </section>
 <section class="card">
   <div class="table-section-head"><div><h2>Batch History</h2><span class="mut">Latest 50 {{ page_title }} batches. Open a batch to inspect rows and edit results, or reverse it here.</span></div></div>
@@ -47,7 +47,7 @@
       {% else %}
         <a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_batch' item.id %}">Open Detail</a>
         {% if item.status == 'Imported' %}
-        <a class="btn btn-sm btn-outline-danger" href="{% url 'count:count_batch_revoke' item.id %}">Revoke</a>
+        <a class="btn btn-sm btn-outline-danger" href="{% url 'count:count_batch_revoke' item.id %}">Reverse</a>
         {% endif %}
       {% endif %}
       </div></td>
