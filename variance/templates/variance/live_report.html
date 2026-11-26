@@ -89,7 +89,7 @@
 {% endif %}
 
 <section class="card variance-report-card">
-  <div class="table-section-head"><div><h2>Variance Detail</h2><span class="mut">{{ rows|length }} P/N(s) · all matching rows shown · <b>·</b> means a record exists with zero variance · <b>—</b> means no record</span></div></div>
+  <div class="table-section-head"><div><h2>Variance Detail</h2><span class="mut">{{ variance_row_count }} P/N(s) · all matching rows shown · <b>·</b> means a record exists with zero variance · <b>—</b> means no record</span></div></div>
   <div class="variance-top-scroll" id="varianceTopScroll"><div></div></div>
   <div class="variance-table-scroll" id="varianceTableScroll">
   <table class="variance-pivot" id="variancePivot">
@@ -103,7 +103,7 @@
       {% for location in cs_locations %}<th class="num sap-head cs-head">{{ location.code }}<small>{{ location.department }} · CS</small></th>{% endfor %}
       <th class="num total-col cs-total">CS Var Qty</th><th class="num total-col cs-total">CS Abs Qty</th><th class="num total-col cs-total">CS Qty Accuracy</th><th>Resolution</th><th class="comment-col">Comments</th>
     </tr></thead>
-    <tbody>{% for row in rows %}
+    <tbody>{% for row in current_page_obj %}
     <tr>
       {% if can_decide and not is_closed %}
       <td class="select-col"><input class="variance-row-check" type="checkbox" name="part_number" value="{{ row.part.part_number }}" {% if row.tk_var_qty == 0 and row.cs_var_qty == 0 %}disabled{% endif %} aria-label="Select {{ row.part.part_number }}"></td>

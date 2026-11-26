@@ -1,6 +1,6 @@
 from access_control.app_functions import is_global_manager, is_plant_manager, my_sap_loc
 from core._imports_for_views import *
-from core.app_functions import http_excel
+from core.app_functions import http_excel, get_paginated_obj
 from core.context_processors import get_basic_info
 from django.db import transaction
 from django.db.models import Exists, F, OuterRef, Subquery
@@ -102,7 +102,19 @@ def variance_live_report(request):
         messages.error(request, "No matching part found.")
         return render(request, "variance/live_report.html", context)
 
-    context.update(get_part_sap_matrix(curr_var_set, tk_locations, cs_locations))
+    # Paginate variance results
+    part_sap_matrix_context = get_part_sap_matrix(curr_var_set, tk_locations, cs_locations)
+    rows = part_sap_matrix_context.get("rows", [])
+
+    # Apply pagination using existing function
+    rows_ordered = sorted(rows, key=lambda x: x["part"].part_number)
+
+    pagination_context = get_paginated_obj(rows_ordered, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
+
+    context.update(pagination_context)
+    context["variance_row_count"] = len(rows_ordered)
+    context.update(pagination_context)
+    context.update(part_sap_matrix_context)
 
     return render(request, "variance/live_report.html", context)
 

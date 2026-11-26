@@ -1,4 +1,5 @@
 from core._imports_for_views import *
+from access_control.app_functions import is_global_manager, is_plant_manager, my_sap_loc
 from core.context_processors import get_basic_info
 from count.models import CountRecord
 from cycles.app_models.cycle_models import CycleSAPLocation
@@ -30,6 +31,12 @@ def count_result(request):
         CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True).values_list("sap_location__code", flat=True)
     )
     count_records = CountRecord.objects.filter(cycle=active_cycle)
+
+    # Filter from role assignment - only show count records user has access to
+    if not is_global_manager(curr_user) and not is_plant_manager(curr_user, plant):
+        my_sap_list = my_sap_loc(curr_user, plant)
+        count_records = count_records.filter(sap_location__code__in=my_sap_list)
+        sap_locations = [loc for loc in sap_locations if loc in my_sap_list]
 
     # Search and Filter
     search_data = request.GET
@@ -63,8 +70,13 @@ def count_result(request):
     context["source_choices"] = SysSet().get_val("COUNT_SOURCE")
     context["sap_filter"] = sap_location_filter
     context["sap_locations"] = sap_locations
-    context["count_records"] = count_records
 
-    if has_search and not count_records.exists():
+    # Bottom Display with Pagination
+    count_records_ordered = count_records.order_by("-id").select_related("part", "sap_location", "physical_location", "sub_location", "entered_by")
+    updated_context = get_paginated_obj(count_records_ordered, request.GET.get("page_num", 1), request.GET.get("per_page_element", 30))
+    context["count_record_row_count"] = count_records_ordered.count()
+    context.update(updated_context)
+
+    if has_search and not count_records_ordered.exists():
         messages.warning(request, "No Count Exceptions / Pending Items found matching your search criteria.")
     return render(request, "count/results.html", context)
