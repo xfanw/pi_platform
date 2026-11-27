@@ -40,14 +40,17 @@
       <td class="num">{{ item.row_count }}</td>
       <td class="num">{{ item.ready_count }}</td>
       <td class="num {% if item.error_count %}neg{% endif %}">{{ item.error_count }}</td>
-      <td class="mut">{{ item.created_at|date:'Y-m-d H:i' }} · {{ item.created_by.username|default:'system' }}</td>
+      <td class="mut">{{ item.created_at|date:'Y-m-d H:i' }} · {{ item.created_by.username }}</td>
       <td>
         <div class="batch-row-actions">
-
+      {% if item.status == 'REVERSED' %}
+      <span>Reversed by {{ item.updated_by.username }} at {{ item.updated_at|date:'Y-m-d H:i' }}</span>
+      {% else %}
         <a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_batch' item.id %}">Open Detail</a>
         {% if item.status == 'Imported' %}
         <button class="btn btn-sm btn-outline-danger" onclick='confirm_reverse({{ item.id }})'>Reverse</button>
         {% endif %}
+      {% endif %}
       </div></td>
     </tr>
     {% empty %}<tr><td colspan="9" class="mut">No {{ page_title }} batches yet.</td></tr>{% endfor %}

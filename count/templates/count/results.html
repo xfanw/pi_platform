@@ -58,7 +58,6 @@
       <td>{{ item.entered_by.username|default:"system" }}<br><span class="mut">{{ item.entered_at|date:"Y-m-d H:i" }}</span></td>
     </tr>{% empty %}<tr><td colspan="13" class="mut">No accepted Count Results match these filters.</td></tr>{% endfor %}</tbody>
   </table></div>
-  {% include "core/includes/paginator.html" %}
 </section>
 {% endif %}
 {% endblock %}
