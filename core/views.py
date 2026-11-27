@@ -57,7 +57,9 @@ def home(request):
             return render(request, "core/home.html", context)
 
     curr_var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
-    context.update(get_live_var_context(curr_var_set))
+    if curr_var_set.exists():
+        context["variance_summary"] = True
+        context.update(get_live_var_context(curr_var_set))
     return render(request, "core/home.html", context)
     plant = _selected_plant(request, required=False)
     if plant is None:

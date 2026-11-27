@@ -19,6 +19,9 @@
 # from apps.plants.models import Plant
 
 
+from pprint import pprint
+from django.db.models.aggregates import Sum
+
 from access_control.app_functions import active_plant_roles, available_plants, is_global_manager, is_plant_manager, my_sap_loc
 from access_control.models import RoleAction
 from count.models import CountIntakeException
@@ -249,7 +252,43 @@ def get_basic_info(request):
                 my_sap_list = my_sap_loc(curr_user, plant)
                 count_ex_set = count_ex_set.filter(sap_location__code__in=my_sap_list)
             portal_pending_count = count_ex_set.filter(status="Pending").count()
+
+    # Pending Station Number
     context["portal_pending_count"] = portal_pending_count
 
-    # pprint(context)
+    # Location Counts
+    context["portal_sap_count"] = (
+        cycle.sap_location_scope.filter(is_active=True).distinct().count()
+        if cycle
+        else plant.sap_locations.filter(is_active=True).distinct().count() if plant else 0
+    )
+    context["portal_physical_count"] = (
+        cycle.physical_location_scope.filter(is_active=True).distinct().count()
+        if cycle
+        else plant.physical_locations.filter(is_active=True).distinct().count() if plant else 0
+    )
+    context["portal_sap_department_count"] = (
+        cycle.sap_location_scope.filter(is_active=True).distinct("sap_location__department").count()
+        if cycle
+        else plant.sap_locations.filter(is_active=True).distinct("department").count() if plant else 0
+    )
+    if cycle:
+        context["portal_part_count"] = cycle.parts.count()
+        context["portal_book_line_count"] = cycle.book_lines.count()
+        context["portal_book_qty_count"] = (
+            cycle.book_lines.aggregate(total_qty=Sum("quantity"))["total_qty"] if cycle.book_lines.exists() else 0
+        )
+        context["portal_count_record_count"] = cycle.count_records.distinct().count()
+        context["portal_count_rec_count"] = (
+            cycle.count_records.aggregate(total_qty=Sum("quantity"))["total_qty"] if cycle.count_records.exists() else 0
+        )
+
+    else:
+        context["portal_part_count"] = 0
+        context["portal_book_line_count"] = 0
+        context["portal_book_qty_count"] = 0
+        context["portal_count_record_count"] = 0
+        context["portal_count_rec_count"] = 0
+
+    pprint(context)
     return context
