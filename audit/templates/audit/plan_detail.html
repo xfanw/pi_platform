@@ -16,7 +16,7 @@
 
 {% if audit_plan.status == 'Draft' and may_manage %}
 <section class="card audit-controls">
-  <form method="post" class="frow">{% csrf_token %}
+  <form method="post" class="frow" action="{% url 'audit:audit_plan_regenerate' audit_plan.id %}">{% csrf_token %}
     <div><label>Auditors</label><input type="number" name="auditors" min="1" value="{{ audit_plan.auditors }}" required></div>
     <div><label>Pages each</label><input type="number" name="pages_per_auditor" min="1" value="{{ audit_plan.pages_per_auditor }}" required></div>
     <div><label>Density</label><select name="density">

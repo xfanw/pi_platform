@@ -66,10 +66,8 @@ class AuditCandidate(TimeStampedModel):
     tag_count = models.PositiveIntegerField(default=0)
 
     coverage_pct = models.DecimalField(max_digits=7, decimal_places=4, default=0)
-    in_top80 = models.BooleanField(default=False)
     selected_records = models.PositiveIntegerField(default=0)
     selection_reason = models.CharField(max_length=24, blank=True)  # Top 80% Value, High Value, High Abs Variance, Manual Select
-    manual_override = models.SmallIntegerField(default=0)
 
     class Meta:
         constraints = [

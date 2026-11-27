@@ -1,63 +1,13 @@
-from django.db.models import F, Q, Count, Sum, DecimalField
-from django.db.models.functions import Abs
+from django.db.models import Q
 
 from audit.models import AuditCandidate, AuditRecord
 from django.db import transaction
 
 from count.models import CycleTagDetail
-from cycles.app_models.cycle_models import CycleSAPLocation
-from cycles.app_models.inventory_models import PartMaster
 from variance.models import CycleVariance
 
 
-def link_candidates_to_audit_records(plan_ref, candidate_set, selection_reason):
-    """
-    Link created AuditCandidates to their related AuditRecords.
-
-    After candidates are created via bulk_create, this function:
-    1. Maps candidates by (sap_location_code, part_number)
-    2. Updates all matching AuditRecords with the candidate foreign key
-    3. Uses bulk_update for efficiency
-
-    Args:
-        plan_ref: The AuditPlan object
-        candidate_set: List of dicts with 'sap_location_code' and 'part_number_snapshot' keys
-        selection_reason: String value to filter candidates (selection_reason field)
-    """
-    if not candidate_set:
-        return
-
-    # Query created candidates with their ID and identifiers
-    candidate_map = {}
-    created_candidates = AuditCandidate.objects.filter(plan=plan_ref, selection_reason=selection_reason).values_list(
-        "id", "sap_location__code", "part_number_snapshot"
-    )
-
-    for candidate_id, sap_code, part_number in created_candidates:
-        candidate_map[(sap_code, part_number)] = candidate_id
-
-    # Build audit records to update
-    audit_records_to_update = []
-    for item in candidate_set:
-        sap_code = item["sap_location_code"]
-        part_number = item["part_number_snapshot"]
-        candidate_id = candidate_map.get((sap_code, part_number))
-
-        if candidate_id:
-            # Get all matching audit records and prepare for update
-            audit_records = AuditRecord.objects.filter(
-                plan=plan_ref, sap_location_code=sap_code, part_number_snapshot=part_number, selected=True
-            )
-            for record in audit_records:
-                record.candidate_id = candidate_id
-                audit_records_to_update.append(record)
-
-    # Bulk update all audit records
-    if audit_records_to_update:
-        AuditRecord.objects.bulk_update(audit_records_to_update, ["candidate_id"], batch_size=1000)
-
-
-def generate_audit_records(audit_plan, count_records):
+def generate_audit_records(audit_plan, count_records, curr_user):
     """
     Efficiently generate AuditRecord entries from count_records with minimal DB queries.
     Takes snapshots of key fields from CountRecord at the time of audit generation.
@@ -139,6 +89,7 @@ def generate_audit_records(audit_plan, count_records):
                 count_quantity_snapshot=count_record.quantity,
                 price_snapshot=count_record.part.price,
                 selected=False,
+                created_by=curr_user,
                 page_number=0,
             )
         )
@@ -152,8 +103,70 @@ def generate_audit_records(audit_plan, count_records):
     return record_set
 
 
+def init_candidates(audit_plan, curr_user):
+    """
+    Initialize audit candidates from audit records.
+
+    Leverages the existing variance foreign key on AuditRecord to:
+    - Fetch all audit records with their variance in one query
+    - Group in-memory by variance (no additional queries)
+    - Create one candidate per unique variance
+    - Link audit records to candidates in bulk
+    """
+    # Fetch all audit records with their related variance in a single query
+    audit_records = list(audit_plan.records.select_related("variance", "variance__part", "variance__sap_location").all())
+
+    # Group audit records by variance, counting them in-memory
+    variance_groups = {}
+    for record in audit_records:
+        if record.variance:
+            if record.variance.id not in variance_groups:
+                variance_groups[record.variance.id] = {"variance": record.variance, "records": []}
+            variance_groups[record.variance.id]["records"].append(record)
+
+    # Create candidates from variance groups
+    candidates_to_create = []
+    for var_data in variance_groups.values():
+        var_ref = var_data["variance"]
+        part_ref = var_ref.part
+        record_count = len(var_data["records"])
+
+        candidates_to_create.append(
+            AuditCandidate(
+                plan=audit_plan,
+                sap_location=var_ref.sap_location,
+                variance_record=var_ref,
+                part=part_ref,
+                part_number_snapshot=part_ref.part_number,
+                description_snapshot=part_ref.description,
+                book_value=var_ref.sap_quantity * var_ref.map_price,
+                map_price=var_ref.map_price,
+                variance_value=var_ref.variance_value,
+                abs_variance=abs(var_ref.variance_value),
+                count_records=record_count,
+                created_by=curr_user,
+                coverage_pct=0,
+            )
+        )
+
+    if candidates_to_create:
+        candidate_set = AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
+
+        # Map variance IDs to created candidates
+        variance_id_to_candidate = {}
+        for candidate in candidate_set:
+            variance_id_to_candidate[candidate.variance_record_id] = candidate
+
+        # Link audit records to their candidates
+        for record in audit_records:
+            if record.variance and record.variance.id in variance_id_to_candidate:
+                record.candidate = variance_id_to_candidate[record.variance.id]
+
+        AuditRecord.objects.bulk_update(audit_records, ["candidate"], batch_size=1000)
+
+
 @transaction.atomic
-def regenerate_candidates(plan_ref):
+def regenerate_candidates(plan_ref, curr_user):
     target_count = plan_ref.target_count
     top_80_target = int(target_count * plan_ref.value_pct / 100)
     # TODO:
@@ -162,15 +175,15 @@ def regenerate_candidates(plan_ref):
     # if top 80% count >= target_count, stop selecting 85% from the top 80% candidates for that SAP Location and part_number.
     # else select all top 80% candidates
     # after top_80 record selection, continue selecting from the remaining candidates based on High Value and High Abs Variance until target_count is reached.
-    top_80_count_real, small_audit = generate_top_80_candidates(plan_ref, target_count, top_80_target)
+    top_80_count_real, small_audit = generate_top_80_candidates(plan_ref, target_count, top_80_target, curr_user)
 
     if small_audit:
         # Variance and MAP > 100
         top_variance_target = min(target_count - top_80_count_real, int(target_count * plan_ref.variance_pct / 100))
-        real_top_variance_count = generate_top_variance_candidates(plan_ref, top_variance_target)
+        real_top_variance_count = generate_top_variance_candidates(plan_ref, top_variance_target, curr_user)
         # MAP
         top_map_target = min(target_count - top_80_count_real - real_top_variance_count, int(target_count * plan_ref.map_pct / 100))
-        real_top_map_count = generate_top_map_candidates(plan_ref, top_map_target)
+        real_top_map_count = generate_top_map_candidates(plan_ref, top_map_target, curr_user)
 
         plan_ref.real_top_80_count = top_80_count_real
         plan_ref.real_variance_count = real_top_variance_count
@@ -180,12 +193,12 @@ def regenerate_candidates(plan_ref):
     else:
         # 10% MAP
         top_map_target = min(target_count - top_80_count_real, int(target_count * plan_ref.map_pct / 100))
-        real_top_map_count = generate_top_map_candidates(plan_ref, top_map_target)
+        real_top_map_count = generate_top_map_candidates(plan_ref, top_map_target, curr_user)
         # 5% of abs variance
         top_variance_target = min(
             target_count - top_80_count_real - real_top_map_count, int(target_count * plan_ref.variance_pct / 100)
         )
-        real_top_variance_count = generate_top_variance_candidates(plan_ref, top_variance_target)
+        real_top_variance_count = generate_top_variance_candidates(plan_ref, top_variance_target, curr_user)
 
         plan_ref.real_top_80_count = top_80_count_real
         plan_ref.real_variance_count = real_top_variance_count
@@ -194,403 +207,147 @@ def regenerate_candidates(plan_ref):
         plan_ref.save()
 
 
-def generate_top_80_candidates(plan_ref, target_count, top_80_target):
-    """
-    Efficiently generate top 80% candidates with minimal DB queries.
+def generate_top_80_candidates(plan_ref, target_count, top_80_target, curr_user):
+    candidate_set = AuditCandidate.objects.filter(plan=plan_ref, records__selected=False).distinct().order_by("-book_value")
 
-    Optimization strategy:
-    - Use aggregation with variance FK to get book values in a single query
-    - Leverage variance data already available via FK (no separate variance lookup!)
-    - Batch create candidates instead of individual creates
-    - Use bulk_update for marking selected records
-    - Prefetch related objects to avoid N+1 queries
-    """
-
-    # Single aggregation query to get book value by SAP location and part
-    # Include variance data via FK to avoid separate queries
-    book_inventory_set = list(
-        AuditRecord.objects.filter(plan=plan_ref, selected=False)
-        .select_related("variance__part")  # Prefetch variance and its part
-        .values("sap_location_code", "part_number_snapshot", "price_snapshot", "variance_id")
-        .annotate(
-            book_value_sum=Sum(F("count_quantity_snapshot") * F("price_snapshot")),
-            count_val=Count("id"),
-            physical_location_count=Count("physical_location_snapshot", distinct=True),
-            sub_location_count=Count("sub_location_snapshot", distinct=True),
-            tag_count=Count("tag_number_snapshot", distinct=True),
-            # Get variance data via aggregation
-            variance_value_sum=Sum("variance__variance_value"),
-            abs_variance_sum=Sum(Abs(F("variance__variance_value")), output_field=DecimalField()),
-            sap_quantity_sum=Sum("variance__sap_quantity"),
-            map_price_first=F("variance__map_price"),
-        )
-        .order_by("-book_value_sum")
-    )
-
-    if not book_inventory_set:
+    if not candidate_set:
         return 0, False
 
-    top_80_count_real = sum(item["count_val"] for item in book_inventory_set)
+    top_80_count_real = sum(item.count_records for item in candidate_set)
     book_set = []
     small_audit = False
-
+    partial_selected = None
+    partial_count = 0
     if top_80_count_real >= target_count:
         temp_sum = 0
 
-        for item in book_inventory_set:
+        for item in candidate_set:
             if temp_sum >= top_80_target:
                 break
+            partial_selected = item
+            partial_count = min(item.count_records, top_80_target - temp_sum)
+            item.selected_records = partial_count
+            item.updated_by = curr_user
+            item.selection_reason += "Top 80% Value"
             book_set.append(item)
-            temp_sum += item["count_val"]
+            temp_sum += partial_count
 
         top_80_count_real = temp_sum
     else:
-        book_set = book_inventory_set
+        book_set = candidate_set
+        for item in book_set:
+            item.selected_records = item.count_records
+            item.updated_by = curr_user
+            item.selection_reason += "Top 80% Value"
         small_audit = True
-
+    AuditCandidate.objects.bulk_update(book_set, ["selected_records", "updated_by", "selection_reason"])
     # Batch update selected records
     if book_set:
         # Build Q filter for all book_set items
         q_filter = Q()
         for item in book_set:
-            q_filter |= Q(sap_location_code=item["sap_location_code"], part_number_snapshot=item["part_number_snapshot"])
+            q_filter |= Q(sap_location_code=item.sap_location.code, part_number_snapshot=item.part_number_snapshot)
 
         # Single bulk update
         AuditRecord.objects.filter(q_filter).update(selected=True)
 
-    # Prefetch related objects for all book_set items in batch
-    sap_codes = {item["sap_location_code"] for item in book_set}
-    part_numbers = {item["part_number_snapshot"] for item in book_set}
-    variance_ids = {item["variance_id"] for item in book_set if item["variance_id"]}
-
-    # Single queries to get all related objects
-    sap_locations_map = {}
-    if sap_codes:
-        sap_locations = CycleSAPLocation.objects.filter(cycle=plan_ref.cycle, sap_location__code__in=sap_codes).select_related(
-            "sap_location"
-        )
-        for sap in sap_locations:
-            sap_locations_map[sap.sap_location.code] = sap.sap_location
-
-    parts_map = {}
-    if part_numbers:
-        parts = PartMaster.objects.filter(cycle=plan_ref.cycle, part_number__in=part_numbers)
-        for part in parts:
-            parts_map[part.part_number] = part
-
-    # Get variances by ID (no need to filter by cycle/sap_code/part anymore!)
-    variances_map = {}
-    if variance_ids:
-        variances = CycleVariance.objects.filter(id__in=variance_ids)
-        for var in variances:
-            variances_map[var.id] = var
-
-    # Build candidates list for bulk create
-    candidates_to_create = []
-
-    for item in book_set:
-        sap_code = item["sap_location_code"]
-        part_number = item["part_number_snapshot"]
-        variance_id = item["variance_id"]
-
-        sap_location = sap_locations_map.get(sap_code)
-        part = parts_map.get(part_number)
-        variance = variances_map.get(variance_id)
-
-        # Use variance data from aggregation, fallback to retrieved variance object
-        book_value = variance.sap_quantity * variance.map_price if variance else item["book_value_sum"]
-        variance_value = variance.variance_value if variance else (item["variance_value_sum"] or 0)
-        abs_variance = abs(variance.variance_value) if variance else abs(item["abs_variance_sum"] or 0)
-        map_price = part.price if part else item["price_snapshot"]
-
-        candidates_to_create.append(
-            AuditCandidate(
-                plan=plan_ref,
-                sap_location=sap_location,
-                part=part,
-                part_number_snapshot=part_number,
-                description_snapshot=part.description if part else "",
-                book_value=book_value,
-                map_price=map_price,
-                variance_value=variance_value,
-                abs_variance=abs_variance,
-                count_records=item["count_val"],
-                location_count=item["physical_location_count"],
-                sub_location_count=item["sub_location_count"],
-                tag_count=item["tag_count"],
-                coverage_pct=0,
-                selected_records=item["count_val"],
-                selection_reason="Top 80% Value",
-                manual_override=0,
-            )
-        )
-
-    # Single bulk create for all candidates
-    if candidates_to_create:
-        AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
-        link_candidates_to_audit_records(plan_ref, book_set, selection_reason="Top 80% Value")
+    if partial_selected:
+        partial_selected.refresh_from_db()
+        unselect_count = partial_selected.count_records - partial_selected.selected_records
+        if unselect_count:
+            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
+            for record in update_set:
+                record.selected = False
+            AuditRecord.objects.bulk_update(update_set, ["selected"])
 
     return top_80_count_real, small_audit
 
 
-def generate_top_variance_candidates(plan_ref, top_variance_target):
-    """
-    Efficiently generate top variance candidates with minimal DB queries.
+def generate_top_variance_candidates(plan_ref, top_variance_target, curr_user):
+    candidate_set = AuditCandidate.objects.filter(plan=plan_ref, records__selected=False).distinct().order_by("-abs_variance")
 
-    Selects candidates with the highest absolute variance values.
-    Similar structure to generate_top_80_candidates but sorted by variance instead of book value.
-
-    Optimization strategy:
-    - Use aggregation with variance FK to get variance values in a single query
-    - Leverage variance data already available via FK (no separate variance lookup!)
-    - Batch create candidates instead of individual creates
-    - Use bulk_update for marking selected records
-    """
-
-    # Single aggregation query to get variance values by SAP location and part
-    # Include variance data via FK to avoid separate queries
-    variance_inventory_set = list(
-        AuditRecord.objects.filter(plan=plan_ref, selected=False)
-        .select_related("variance__part")  # Prefetch variance and its part
-        .values("sap_location_code", "part_number_snapshot", "price_snapshot", "variance_id")
-        .annotate(
-            abs_variance_sum=Sum(Abs("variance__variance_value")),
-            variance_value_sum=Sum("variance__variance_value"),
-            count_val=Count("id"),
-            physical_location_count=Count("physical_location_snapshot", distinct=True),
-            sub_location_count=Count("sub_location_snapshot", distinct=True),
-            tag_count=Count("tag_number_snapshot", distinct=True),
-            book_value_sum=Sum(F("count_quantity_snapshot") * F("price_snapshot")),
-        )
-        .order_by("-abs_variance_sum")  # Sort by absolute variance descending
-    )
-
-    if not variance_inventory_set:
+    if not candidate_set:
         return 0
 
-    variance_count_real = sum(item["count_val"] for item in variance_inventory_set)
+    variance_count_real = sum(item.count_records for item in candidate_set)
     variance_set = []
 
     # Select candidates until reaching top_variance_target
     temp_sum = 0
-    for item in variance_inventory_set:
+    partial_selected = None
+    partial_count = 0
+    for item in candidate_set:
         if temp_sum >= top_variance_target:
             break
+        partial_count = min(item.count_records, top_variance_target - temp_sum)
         variance_set.append(item)
-        temp_sum += item["count_val"]
+        temp_sum += partial_count
+        item.selected_records = partial_count
+        partial_selected = item
+        item.selection_reason += "High Abs Variance"
+        item.updated_by = curr_user
+
     variance_count_real = temp_sum
+    AuditCandidate.objects.bulk_update(variance_set, ["selected_records", "selection_reason", "updated_by"])
     # Batch update selected records
-    if variance_set:
-        # Build Q filter for all variance_set items
-        q_filter = Q()
-        for item in variance_set:
-            q_filter |= Q(sap_location_code=item["sap_location_code"], part_number_snapshot=item["part_number_snapshot"])
 
-        # Single bulk update
-        AuditRecord.objects.filter(q_filter).update(selected=True)
-
-    # Prefetch related objects for all variance_set items in batch
-    sap_codes = {item["sap_location_code"] for item in variance_set}
-    part_numbers = {item["part_number_snapshot"] for item in variance_set}
-    variance_ids = {item["variance_id"] for item in variance_set if item["variance_id"]}
-
-    # Single queries to get all related objects
-    sap_locations_map = {}
-    if sap_codes:
-        sap_locations = CycleSAPLocation.objects.filter(cycle=plan_ref.cycle, sap_location__code__in=sap_codes).select_related(
-            "sap_location"
-        )
-        for sap in sap_locations:
-            sap_locations_map[sap.sap_location.code] = sap.sap_location
-
-    parts_map = {}
-    if part_numbers:
-        parts = PartMaster.objects.filter(cycle=plan_ref.cycle, part_number__in=part_numbers)
-        for part in parts:
-            parts_map[part.part_number] = part
-
-    # Get variances by ID (direct lookup via FK)
-    variances_map = {}
-    if variance_ids:
-        variances = CycleVariance.objects.filter(id__in=variance_ids)
-        for var in variances:
-            variances_map[var.id] = var
-
-    # Build candidates list for bulk create
-    candidates_to_create = []
-
+    q_filter = Q()
     for item in variance_set:
-        sap_code = item["sap_location_code"]
-        part_number = item["part_number_snapshot"]
-        variance_id = item["variance_id"]
+        q_filter |= Q(sap_location_code=item.sap_location.code, part_number_snapshot=item.part_number_snapshot)
 
-        sap_location = sap_locations_map.get(sap_code)
-        part = parts_map.get(part_number)
-        variance = variances_map.get(variance_id)
+    # Single bulk update
+    AuditRecord.objects.filter(q_filter).update(selected=True)
 
-        # Use variance data
-        book_value = variance.sap_quantity * variance.map_price if variance else item["book_value_sum"]
-        variance_value = variance.variance_value if variance else (item["variance_value_sum"] or 0)
-        abs_variance = abs(variance.variance_value) if variance else abs(item["abs_variance_sum"] or 0)
-        map_price = part.price if part else item["price_snapshot"]
-
-        candidates_to_create.append(
-            AuditCandidate(
-                plan=plan_ref,
-                sap_location=sap_location,
-                part=part,
-                part_number_snapshot=part_number,
-                description_snapshot=part.description if part else "",
-                book_value=book_value,
-                map_price=map_price,
-                variance_value=variance_value,
-                abs_variance=abs_variance,
-                count_records=item["count_val"],
-                location_count=item["physical_location_count"],
-                sub_location_count=item["sub_location_count"],
-                tag_count=item["tag_count"],
-                coverage_pct=0,
-                selected_records=item["count_val"],
-                selection_reason="High Abs Variance",
-                manual_override=0,
-            )
-        )
-
-    # Single bulk create for all candidates
-    if candidates_to_create:
-        AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
-        link_candidates_to_audit_records(plan_ref, variance_set, selection_reason="High Abs Variance")
+    if partial_selected:
+        partial_selected.refresh_from_db()
+        unselect_count = partial_selected.count_records - partial_selected.selected_records
+        if unselect_count:
+            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
+            for record in update_set:
+                record.selected = False
+            AuditRecord.objects.bulk_update(update_set, ["selected"])
 
     return variance_count_real
 
 
-def generate_top_map_candidates(plan_ref, top_map_target):
-    """
-    Efficiently generate top MAP (Map Price) candidates with minimal DB queries.
+def generate_top_map_candidates(plan_ref, top_map_target, curr_user):
+    candidate_set = AuditCandidate.objects.filter(plan=plan_ref, records__selected=False).distinct().order_by("-map_price")
 
-    Selects candidates with the highest MAP price values.
-    Similar structure to generate_top_variance_candidates but sorted by map_price instead of variance.
-
-    Optimization strategy:
-    - Use aggregation with variance FK to get MAP prices in a single query
-    - Leverage variance data already available via FK (no separate variance lookup!)
-    - Batch create candidates instead of individual creates
-    - Use bulk_update for marking selected records
-    """
-
-    # Single aggregation query to get MAP prices by SAP location and part
-    # Include variance data via FK to avoid separate queries
-    map_inventory_set = list(
-        AuditRecord.objects.filter(plan=plan_ref, selected=False)
-        .select_related("variance__part")  # Prefetch variance and its part
-        .values("sap_location_code", "part_number_snapshot", "price_snapshot", "variance_id")
-        .annotate(
-            count_val=Count("id"),
-            physical_location_count=Count("physical_location_snapshot", distinct=True),
-            sub_location_count=Count("sub_location_snapshot", distinct=True),
-            tag_count=Count("tag_number_snapshot", distinct=True),
-            abs_variance_sum=Sum(Abs("variance__variance_value")),
-            variance_value_sum=Sum("variance__variance_value"),
-            book_value_sum=Sum(F("count_quantity_snapshot") * F("price_snapshot")),
-            map_price_value=F("price_snapshot"),  # Use price_snapshot as MAP price
-        )
-        .order_by("-price_snapshot")  # Sort by MAP price descending
-    )
-
-    if not map_inventory_set:
+    if not candidate_set:
         return 0
 
-    map_count_real = sum(item["count_val"] for item in map_inventory_set)
+    map_count_real = sum(item.count_records for item in candidate_set)
     map_set = []
 
     # Select candidates until reaching top_map_target
     temp_sum = 0
-    for item in map_inventory_set:
+    partial_selected = None
+    partial_count = 0
+    for item in candidate_set:
         if temp_sum >= top_map_target:
             break
+        partial_count = min(item.count_records, top_map_target - temp_sum)
+        item.selected_records = partial_count
         map_set.append(item)
-        temp_sum += item["count_val"]
+        temp_sum += partial_count
+        partial_selected = item
+        item.selection_reason += "High Value"
+        item.updated_by = curr_user
     map_count_real = temp_sum
-    # Batch update selected records
-    if map_set:
-        # Build Q filter for all map_set items
-        q_filter = Q()
-        for item in map_set:
-            q_filter |= Q(sap_location_code=item["sap_location_code"], part_number_snapshot=item["part_number_snapshot"])
 
-        # Single bulk update
-        AuditRecord.objects.filter(q_filter).update(selected=True)
+    AuditCandidate.objects.bulk_update(map_set, ["selected_records", "selection_reason", "updated_by"])
 
-    # Prefetch related objects for all map_set items in batch
-    sap_codes = {item["sap_location_code"] for item in map_set}
-    part_numbers = {item["part_number_snapshot"] for item in map_set}
-    variance_ids = {item["variance_id"] for item in map_set if item["variance_id"]}
-
-    # Single queries to get all related objects
-    sap_locations_map = {}
-    if sap_codes:
-        sap_locations = CycleSAPLocation.objects.filter(cycle=plan_ref.cycle, sap_location__code__in=sap_codes).select_related(
-            "sap_location"
-        )
-        for sap in sap_locations:
-            sap_locations_map[sap.sap_location.code] = sap.sap_location
-
-    parts_map = {}
-    if part_numbers:
-        parts = PartMaster.objects.filter(cycle=plan_ref.cycle, part_number__in=part_numbers)
-        for part in parts:
-            parts_map[part.part_number] = part
-
-    # Get variances by ID (direct lookup via FK)
-    variances_map = {}
-    if variance_ids:
-        variances = CycleVariance.objects.filter(id__in=variance_ids)
-        for var in variances:
-            variances_map[var.id] = var
-
-    # Build candidates list for bulk create
-    candidates_to_create = []
-
+    q_filter = Q()
     for item in map_set:
-        sap_code = item["sap_location_code"]
-        part_number = item["part_number_snapshot"]
-        variance_id = item["variance_id"]
+        q_filter |= Q(sap_location_code=item.sap_location.code, part_number_snapshot=item.part_number_snapshot)
+    AuditRecord.objects.filter(q_filter).update(selected=True)
 
-        sap_location = sap_locations_map.get(sap_code)
-        part = parts_map.get(part_number)
-        variance = variances_map.get(variance_id)
-
-        # Use variance data
-        book_value = variance.sap_quantity * variance.map_price if variance else item["book_value_sum"]
-        variance_value = variance.variance_value if variance else (item["variance_value_sum"] or 0)
-        abs_variance = abs(variance.variance_value) if variance else abs(item["abs_variance_sum"] or 0)
-        map_price = part.price if part else item["price_snapshot"]
-
-        candidates_to_create.append(
-            AuditCandidate(
-                plan=plan_ref,
-                sap_location=sap_location,
-                part=part,
-                part_number_snapshot=part_number,
-                description_snapshot=part.description if part else "",
-                book_value=book_value,
-                map_price=map_price,
-                variance_value=variance_value,
-                abs_variance=abs_variance,
-                count_records=item["count_val"],
-                location_count=item["physical_location_count"],
-                sub_location_count=item["sub_location_count"],
-                tag_count=item["tag_count"],
-                coverage_pct=0,
-                selected_records=item["count_val"],
-                selection_reason="High MAP Price",
-                manual_override=0,
-            )
-        )
-
-    # Single bulk create for all candidates
-    if candidates_to_create:
-        AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
-        link_candidates_to_audit_records(plan_ref, map_set, selection_reason="High MAP Price")
-
+    if partial_selected:
+        partial_selected.refresh_from_db()
+        unselect_count = partial_selected.count_records - partial_selected.selected_records
+        if unselect_count:
+            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
+            for record in update_set:
+                record.selected = False
+            AuditRecord.objects.bulk_update(update_set, ["selected"])
     return map_count_real

@@ -1,4 +1,4 @@
-from audit.app_functions.planning import generate_audit_records, regenerate_candidates
+from audit.app_functions.planning import generate_audit_records, init_candidates, regenerate_candidates
 from audit.models import AuditCandidate, AuditPlan, AuditRecord
 from core._imports_for_views import *
 from cycles.app_models.cycle_models import CyclePhysicalLocation, CycleSAPLocation
@@ -158,8 +158,9 @@ def audit_planning_create(request):
             status="Draft",
         )
 
-        generate_audit_records(audit_plan, count_records)
-        regenerate_candidates(audit_plan)
+        generate_audit_records(audit_plan, count_records, curr_user)
+        init_candidates(audit_plan, curr_user)
+        regenerate_candidates(audit_plan, curr_user)
 
         messages.success(request, f"Audit Plan '{plan_name}' created successfully with {total_records} available records.")
         return redirect("audit:audit_plan_detail", plan_id=audit_plan.id)
@@ -243,10 +244,10 @@ def audit_plan_regenerate(request, plan_id):
             audit_plan.variance_pct = variance_pct
             audit_plan.save()
 
-            AuditRecord.objects.filter(audit_plan=audit_plan).update(selected=False)
-            AuditCandidate.objects.filter(audit_plan=audit_plan).delete()
+            AuditRecord.objects.filter(plan=audit_plan).update(selected=False)
+            AuditCandidate.objects.filter(plan=audit_plan).update(selected_records=0, selection_reason="", coverage_pct=0)
             # generate_audit_records(audit_plan, audit_plan.records.count())
-            regenerate_candidates(audit_plan)
+            regenerate_candidates(audit_plan, curr_user)
 
             messages.success(request, f"Audit Plan '{audit_plan.name}' regenerated successfully.")
         except Exception as e:
