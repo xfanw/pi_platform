@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <a class="back-link" href="{% url 'count:count_upload' %}">← Count Result Upload</a>
-    <h1>{% if batch.status == 'Imported' %}Imported Onboarding File{% else %}FilePreview{% endif %}</h1>
+    <h1>{% if batch.status == 'Imported' %}Imported Counte Record File{% else %}FilePreview{% endif %}</h1>
     <p class="page-sub">{{ batch.source_filename }} ·  uploaded {{ batch.created_at|date:"Y-m-d H:i" }}</p>
   </div>
   <div class="page-actions">
@@ -42,7 +42,7 @@
 {% elif batch.status == 'Preview' %}
 <section class="card count-channel-note"><b>Ready to confirm</b><span>Review the information below. </span></section>
 {% else %}
-<section class="card count-channel-note"><b>Import complete</b><span>{{ batch.imported_count }} records were applied at {{ batch.confirmed_at|date:"Y-m-d H:i" }} by {{ batch.confirmed_by.username }}. This evidence is read-only.</span></section>
+<section class="card count-channel-note"><b>Import complete</b><span>{{ batch.imported_count }} records were applied at {{ batch.updated_at|date:"Y-m-d H:i" }} by {{ batch.updated_by.username }}. This evidence is read-only.</span></section>
 {% endif %}
 
 <section class="card bulk-preview-card">

@@ -1,5 +1,5 @@
 from audit.app_functions.planning import generate_audit_records, regenerate_candidates
-from audit.models import AuditPlan
+from audit.models import AuditCandidate, AuditPlan, AuditRecord
 from core._imports_for_views import *
 from cycles.app_models.cycle_models import CyclePhysicalLocation, CycleSAPLocation
 from count.models import CountRecord
@@ -187,30 +187,104 @@ def audit_plan_detail(request, plan_id):
         messages.error(request, mark_safe(f"You do NOT have permission to create audit planning. {msg}"))
         return redirect("core:home")
 
+    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
+    context["may_manage"] = can_act
+
     active_cycle = context["cycle_ref"]
     if not active_cycle:
-        return render(request, "audit/planning.html", context)
+        return redirect("audit:audit_planning")
 
-    can_act, msg = check_permission(curr_user, plant, PERMISSION, True)
-    context["may_create"] = can_act
+    plan_ref = AuditPlan.objects.filter(id=plan_id).first()
+    if not plan_ref:
+        messages.error(request, "Audit Plan not found.")
+        return redirect("audit:audit_planning")
 
-    cycle_sap_locations = list(
-        CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True)
-        .values(code=F("sap_location__code"), department=F("sap_location__department"))
-        .order_by("sap_location__department", "sap_location__code")
-    )
-
-    cycle_physical_locations = list(
-        CyclePhysicalLocation.objects.filter(cycle=active_cycle, is_active=True).values(
-            loc_name=F("physical_location__name"), sap_code=F("physical_location__sap_location__code")
-        )
-    )
-    context["department_list"] = sorted(set({dept["department"] for dept in cycle_sap_locations}))
-    context["sap_list"] = cycle_sap_locations
-    context["physical_list"] = cycle_physical_locations
-    pprint(context)
-
+    context["audit_plan"] = plan_ref
+    context["selected"] = plan_ref.real_total_count
+    context["available"] = plan_ref.records.count()
+    context["difference"] = plan_ref.real_total_count - plan_ref.target_count
+    context["required_pages"] = (plan_ref.target_count + plan_ref.rows_per_page - 1) // plan_ref.rows_per_page
     return render(request, "audit/plan_detail.html", context)
+
+
+@login_required
+def audit_plan_regenerate(request, plan_id):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to manage audit plans. {msg}"))
+        return redirect("core:home")
+
+    audit_plan = AuditPlan.objects.filter(id=plan_id).first()
+    if not audit_plan:
+        messages.error(request, "Audit Plan not found.")
+        return redirect("audit:audit_planning")
+
+    if request.method == "POST":
+        try:
+            auditors = int(request.POST.get("auditors"))
+            pages_per_auditor = int(request.POST.get("pages_per_auditor"))
+            rows_per_page = int(request.POST.get("density"))
+            value_pct = float(request.POST.get("value_pct"))
+            map_pct = float(request.POST.get("map_pct"))
+            variance_pct = float(request.POST.get("variance_pct"))
+
+            audit_plan.auditors = auditors
+            audit_plan.pages_per_auditor = pages_per_auditor
+            audit_plan.rows_per_page = rows_per_page
+            audit_plan.value_pct = value_pct
+            audit_plan.map_pct = map_pct
+            audit_plan.variance_pct = variance_pct
+            audit_plan.save()
+
+            AuditRecord.objects.filter(audit_plan=audit_plan).update(selected=False)
+            AuditCandidate.objects.filter(audit_plan=audit_plan).delete()
+            # generate_audit_records(audit_plan, audit_plan.records.count())
+            regenerate_candidates(audit_plan)
+
+            messages.success(request, f"Audit Plan '{audit_plan.name}' regenerated successfully.")
+        except Exception as e:
+            messages.error(request, f"An error occurred: {str(e)}")
+
+    return redirect("audit:audit_plan_detail", plan_id=plan_id)
+
+
+@login_required
+def audit_plan_finalize(request, plan_id):
+    curr_user = request.user
+    context = get_basic_info(request)
+    plant = context["plant_ref"]
+    if not plant:
+        messages.error(request, "No Plant is available in your approved scope.")
+        return redirect("core:home")
+
+    can_act, msg = check_permission(curr_user, plant, PERMISSION)
+    if not can_act:
+        messages.error(request, mark_safe(f"You do NOT have permission to manage audit plans. {msg}"))
+        return redirect("core:home")
+
+    audit_plan = AuditPlan.objects.filter(id=plan_id).first()
+    if not audit_plan:
+        messages.error(request, "Audit Plan not found.")
+        return redirect("audit:audit_planning")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "finalize":
+            try:
+                audit_plan.status = "Finalized"
+                audit_plan.save()
+                messages.success(request, f"Audit Plan '{audit_plan.name}' finalized successfully.")
+            except Exception as e:
+                messages.error(request, f"An error occurred: {str(e)}")
+
+    return redirect("audit:audit_plan_detail", plan_id=plan_id)
 
 
 @login_required

@@ -1,32 +1,38 @@
 {% extends "core/base.html" %}
-{% block title %}{{ plan.name }} | Audit Plan{% endblock %}
+{% block title %}{{ audit_plan.name }} | Audit Plan{% endblock %}
 {% block body %}
-<div class="audit-title-row"><div><a href="{% url 'audit:audit_planning' %}">← Audit Planning</a><h1>{{ plan.name }}</h1><p class="page-sub">{{ plan.department.name }} · {{ plan.get_status_display }} · generated selection remains editable until Finalize.</p></div>
-<div class="frow">{% if plan.status != 'DRAFT' %}
+<div class="audit-title-row"><div><a href="{% url 'audit:audit_planning' %}">← Audit Planning</a><h1>{{ audit_plan.name }}</h1><p class="page-sub">{{ audit_plan.department.name }} · {{ audit_plan.get_status_display }} · generated selection remains editable until Finalize.</p></div>
+<div class="frow">{% if audit_plan.status != 'Draft' %}
   <a class="btn btn-sm btn-outline-primary" href="{% url 'core:home' %}">Audit Sheet Excel</a>
   <a class="btn btn-sm btn-primary" href="{% url 'core:home' %}">View Audit Results</a>{% endif %}
 </div></div>
 
 <div class="cards audit-status-cards">
-  <div class="kpi"><span class="lbl">Target Capacity</span><span class="val">{{ plan.target_count }}</span><span class="sub">{{ plan.auditors }} auditor(s) · {{ plan.pages_per_auditor }} page(s) each</span></div>
-  <div class="kpi"><span class="lbl">Selected Count</span><span class="val">{{ selected }}</span><span class="sub">of {{ available }} available non-zero records</span></div>
-  <div class="kpi"><span class="lbl">Difference</span><span class="val {% if difference < 0 %}neg{% endif %}">{% if difference > 0 %}+{% endif %}{{ difference }}</span><span class="sub">negative means below capacity</span></div>
-  <div class="kpi"><span class="lbl">Required Pages</span><span class="val">{{ required_pages }}</span><span class="sub">{{ plan.rows_per_page }} rows per page</span></div>
+  <div class="kpi"><div class="lbl">Target Capacity</div><div class="val">{{ audit_plan.target_count }}</div><div class="sub">{{ audit_plan.auditors }} auditor(s) · {{ audit_plan.pages_per_auditor }} page(s) each</div></div>
+  <div class="kpi"><div class="lbl">Selected Count</div><div class="val">{{ selected }}</div><div class="sub">of {{ available }} available non-zero records</div></div>
+  <div class="kpi"><div class="lbl">Difference</div><div class="val {% if difference < 0 %}neg{% endif %}">{% if difference > 0 %}+{% endif %}{{ difference }}</div><div class="sub">negative means below capacity</div></div>
+  <div class="kpi"><div class="lbl">Required Pages</div><div class="val">{{ required_pages }}</div><div class="sub">{{ audit_plan.rows_per_page }} rows per page</div></div>
 </div>
 
-{% if plan.status == 'DRAFT' %}
+{% if audit_plan.status == 'Draft' and may_manage %}
 <section class="card audit-controls">
-  <form method="post" class="frow">{% csrf_token %}<input type="hidden" name="action" value="regenerate"><input type="hidden" name="row_version" value="{{ plan.row_version }}">
-    <div><label>Auditors</label><input type="number" name="auditors" min="1" value="{{ plan.auditors }}" required></div>
-    <div><label>Pages each</label><input type="number" name="pages_per_auditor" min="1" value="{{ plan.pages_per_auditor }}" required></div>
-    <div><label>Density</label><select name="density">{% for value,label in density_choices %}<option value="{{ value }}" {% if value == plan.density %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-    <div><label>Value %</label><input type="number" name="value_pct" min="0" max="100" step=".01" value="{{ plan.value_pct }}"></div>
-    <div><label>MAP %</label><input type="number" name="map_pct" min="0" max="100" step=".01" value="{{ plan.map_pct }}"></div>
-    <div><label>Variance %</label><input type="number" name="variance_pct" min="0" max="100" step=".01" value="{{ plan.variance_pct }}"></div>
-    <button type="submit" {% if not may_change %}disabled{% endif %}>Regenerate</button>
+  <form method="post" class="frow">{% csrf_token %}
+    <div><label>Auditors</label><input type="number" name="auditors" min="1" value="{{ audit_plan.auditors }}" required></div>
+    <div><label>Pages each</label><input type="number" name="pages_per_auditor" min="1" value="{{ audit_plan.pages_per_auditor }}" required></div>
+    <div><label>Density</label><select name="density">
+      <option value="30" {% if audit_plan.rows_per_page == 30 %}selected{% endif %}>Spacious (30 rows)</option>
+      <option value="35" {% if audit_plan.rows_per_page == 35 %}selected{% endif %}>Normal (35 rows)</option>
+      <option value="39" {% if audit_plan.rows_per_page == 39 %}selected{% endif %}>Compact (39 rows)</option>
+    </select></div>
+    <div><label>Value %</label><input type="number" name="value_pct" min="0" max="100" step=".01" value="{{ audit_plan.value_pct }}"></div>
+    <div><label>MAP %</label><input type="number" name="map_pct" min="0" max="100" step=".01" value="{{ audit_plan.map_pct }}"></div>
+    <div><label>Variance %</label><input type="number" name="variance_pct" min="0" max="100" step=".01" value="{{ audit_plan.variance_pct }}"></div>
+    <button class='btn btn-sm btn-primary' type="submit">Regenerate</button>
   </form>
   <div class="audit-rule-note"><b>Why selected?</b><div><span>Top 80% Value</span><strong>Cumulative book-value population by SAP Location.</strong></div><div><span>High Value</span><strong>Highest remaining MAP$.</strong></div><div><span>High Abs Variance</span><strong>Largest remaining absolute variance value.</strong></div></div>
-  {% if may_finalize %}<form method="post" onsubmit="return confirm('Finalize and freeze these Audit Records?');">{% csrf_token %}<input type="hidden" name="action" value="finalize"><input type="hidden" name="row_version" value="{{ plan.row_version }}"><button type="submit">Finalize &amp; Build Audit Sheet</button></form>{% endif %}
+  <form method="post" onsubmit="return confirm('Finalize and freeze these Audit Records?');">
+  {% csrf_token %}<input type="hidden" name="action" value="finalize">
+  <button class='btn btn-sm btn-primary' type="submit">Finalize &amp; Build Audit Sheet</button></form>
 </section>
 {% endif %}
 
@@ -35,7 +41,7 @@
   <div class="mut">{{ candidate_total }} candidate P/N group(s)</div>
   <div class="audit-candidate-wrap"><table class="audit-candidate-table"><thead><tr><th>Audit / Total</th><th>SAP</th><th>Part Number</th><th>Description</th><th class="num">Book Value</th><th class="num">Coverage</th><th class="num">MAP$</th><th class="num">Abs Variance</th><th>Record Mix</th><th>Reason</th></tr></thead><tbody>
   {% for item in candidates %}<tr class="{% if item.selected_records %}audit-selected{% endif %}">
-    <td>{% if plan.status == 'DRAFT' and may_change %}<form method="post" class="audit-record-editor">{% csrf_token %}<input type="hidden" name="action" value="candidate"><input type="hidden" name="candidate_id" value="{{ item.candidate_id }}"><input type="hidden" name="row_version" value="{{ plan.row_version }}"><input type="number" name="selected_records" min="0" max="{{ item.count_records }}" value="{{ item.selected_records }}"><span>/ {{ item.count_records }}</span><button class="btn tiny" type="submit">Save</button></form>{% else %}<b>{{ item.selected_records }}</b> / {{ item.count_records }}{% endif %}</td>
+    <td>{% if audit_plan.status == 'Draft' and may_change %}<form method="post" class="audit-record-editor">{% csrf_token %}<input type="hidden" name="action" value="candidate"><input type="hidden" name="candidate_id" value="{{ item.candidate_id }}"><input type="hidden" name="row_version" value="{{ audit_plan.row_version }}"><input type="number" name="selected_records" min="0" max="{{ item.count_records }}" value="{{ item.selected_records }}"><span>/ {{ item.count_records }}</span><button class="btn tiny" type="submit">Save</button></form>{% else %}<b>{{ item.selected_records }}</b> / {{ item.count_records }}{% endif %}</td>
     <td><span class="chip">{{ item.sap_location.code }}</span></td><td><b>{{ item.part_number_snapshot }}</b></td><td class="desc" title="{{ item.description_snapshot }}">{{ item.description_snapshot }}</td><td class="num">${{ item.book_value|floatformat:2 }}</td><td class="num">{{ item.coverage_pct|floatformat:1 }}%</td><td class="num">${{ item.map_price|floatformat:2 }}</td><td class="num {% if item.variance_value < 0 %}neg{% endif %}">${{ item.abs_variance|floatformat:2 }}</td><td class="audit-mix"><span>{{ item.location_count }} loc</span><span>{{ item.sub_location_count }} sub</span><span>{{ item.tag_count }} tag</span></td><td>{% if item.selection_reason %}<span class="chip">{{ item.get_selection_reason_display }}</span>{% else %}—{% endif %}</td>
   </tr>{% empty %}<tr><td colspan="10" class="mut">No candidates match this view.</td></tr>{% endfor %}
   </tbody></table></div>

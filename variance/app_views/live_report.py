@@ -59,6 +59,7 @@ def variance_live_report(request):
     has_search = False
 
     curr_var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+    context.update(get_live_var_context(curr_var_set))
     if search:
         has_search = True
         curr_var_set = curr_var_set.filter(Q(part__part_number__icontains=search) | Q(part__description__icontains=search))
@@ -80,6 +81,7 @@ def variance_live_report(request):
         curr_var_set = curr_var_set.filter(sap_inventory_type__icontains=selected_type)
         context["selected_type"] = selected_type
     if show_var_only != "all":
+        has_search = True
         curr_var_set = curr_var_set.exclude(variance_quantity=0)
         context["show_all"] = False
     else:
@@ -97,7 +99,17 @@ def variance_live_report(request):
         .order_by("sap_location__department", "sap_location__code")
     )
     context["cs_locations"] = cs_locations
-    context.update(get_live_var_context(curr_var_set))
+    filtered_var_context = get_live_var_context(curr_var_set)
+    if has_search:
+        context["has_search"] = True
+        context["cs_abs_qty_filtered"] = filtered_var_context.get("cs_abs_qty")
+        context["cs_avg_acc_filtered"] = filtered_var_context.get("cs_avg_acc")
+        context["tk_abs_acc_filtered"] = filtered_var_context.get("tk_abs_acc")
+        context["tk_abs_val_filtered"] = filtered_var_context.get("tk_abs_val")
+        context["tk_net_acc_filtered"] = filtered_var_context.get("tk_net_acc")
+        context["tk_net_val_filtered"] = filtered_var_context.get("tk_net_val")
+        context["tk_count_value_filtered"] = filtered_var_context.get("tk_count_value")
+        context["tk_book_value_filtered"] = filtered_var_context.get("tk_book_value")
     if has_search and not curr_var_set.exists():
         messages.error(request, "No matching part found.")
         return render(request, "variance/live_report.html", context)

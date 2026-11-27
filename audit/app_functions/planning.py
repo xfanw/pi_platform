@@ -10,7 +10,7 @@ from cycles.app_models.inventory_models import PartMaster
 from variance.models import CycleVariance
 
 
-def link_candidates_to_audit_records(plan_ref, candidate_set, in_top80, selection_reason):
+def link_candidates_to_audit_records(plan_ref, candidate_set, selection_reason):
     """
     Link created AuditCandidates to their related AuditRecords.
 
@@ -22,7 +22,6 @@ def link_candidates_to_audit_records(plan_ref, candidate_set, in_top80, selectio
     Args:
         plan_ref: The AuditPlan object
         candidate_set: List of dicts with 'sap_location_code' and 'part_number_snapshot' keys
-        in_top80: Boolean value to filter candidates (in_top80 field)
         selection_reason: String value to filter candidates (selection_reason field)
     """
     if not candidate_set:
@@ -30,9 +29,9 @@ def link_candidates_to_audit_records(plan_ref, candidate_set, in_top80, selectio
 
     # Query created candidates with their ID and identifiers
     candidate_map = {}
-    created_candidates = AuditCandidate.objects.filter(
-        plan=plan_ref, in_top80=in_top80, selection_reason=selection_reason
-    ).values_list("id", "sap_location__code", "part_number_snapshot")
+    created_candidates = AuditCandidate.objects.filter(plan=plan_ref, selection_reason=selection_reason).values_list(
+        "id", "sap_location__code", "part_number_snapshot"
+    )
 
     for candidate_id, sap_code, part_number in created_candidates:
         candidate_map[(sap_code, part_number)] = candidate_id
@@ -156,7 +155,7 @@ def generate_audit_records(audit_plan, count_records):
 @transaction.atomic
 def regenerate_candidates(plan_ref):
     target_count = plan_ref.target_count
-    top_80_target = int(target_count * plan_ref.value_pct)
+    top_80_target = int(target_count * plan_ref.value_pct / 100)
     # TODO:
     # Top 80% is calculated separately for each SAP Location and part_number. ignore count_quantity = 0
     # Lines are sorted by positive Book Value * book inventory, highest first.
@@ -167,10 +166,10 @@ def regenerate_candidates(plan_ref):
 
     if small_audit:
         # Variance and MAP > 100
-        top_variance_target = min(target_count - top_80_count_real, int(target_count * plan_ref.variance_pct))
+        top_variance_target = min(target_count - top_80_count_real, int(target_count * plan_ref.variance_pct / 100))
         real_top_variance_count = generate_top_variance_candidates(plan_ref, top_variance_target)
         # MAP
-        top_map_target = min(target_count - top_80_count_real - real_top_variance_count, int(target_count * plan_ref.map_pct))
+        top_map_target = min(target_count - top_80_count_real - real_top_variance_count, int(target_count * plan_ref.map_pct / 100))
         real_top_map_count = generate_top_map_candidates(plan_ref, top_map_target)
 
         plan_ref.real_top_80_count = top_80_count_real
@@ -180,10 +179,12 @@ def regenerate_candidates(plan_ref):
         plan_ref.save()
     else:
         # 10% MAP
-        top_map_target = min(target_count - top_80_count_real, int(target_count * plan_ref.map_pct))
+        top_map_target = min(target_count - top_80_count_real, int(target_count * plan_ref.map_pct / 100))
         real_top_map_count = generate_top_map_candidates(plan_ref, top_map_target)
         # 5% of abs variance
-        top_variance_target = min(target_count - top_80_count_real - real_top_map_count, int(target_count * plan_ref.variance_pct))
+        top_variance_target = min(
+            target_count - top_80_count_real - real_top_map_count, int(target_count * plan_ref.variance_pct / 100)
+        )
         real_top_variance_count = generate_top_variance_candidates(plan_ref, top_variance_target)
 
         plan_ref.real_top_80_count = top_80_count_real
@@ -318,7 +319,6 @@ def generate_top_80_candidates(plan_ref, target_count, top_80_target):
                 sub_location_count=item["sub_location_count"],
                 tag_count=item["tag_count"],
                 coverage_pct=0,
-                in_top80=True,
                 selected_records=item["count_val"],
                 selection_reason="Top 80% Value",
                 manual_override=0,
@@ -328,7 +328,7 @@ def generate_top_80_candidates(plan_ref, target_count, top_80_target):
     # Single bulk create for all candidates
     if candidates_to_create:
         AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
-        link_candidates_to_audit_records(plan_ref, book_set, in_top80=True, selection_reason="Top 80% Value")
+        link_candidates_to_audit_records(plan_ref, book_set, selection_reason="Top 80% Value")
 
     return top_80_count_real, small_audit
 
@@ -450,7 +450,6 @@ def generate_top_variance_candidates(plan_ref, top_variance_target):
                 sub_location_count=item["sub_location_count"],
                 tag_count=item["tag_count"],
                 coverage_pct=0,
-                in_top80=False,  # Not in top80, selected for high variance
                 selected_records=item["count_val"],
                 selection_reason="High Abs Variance",
                 manual_override=0,
@@ -460,7 +459,7 @@ def generate_top_variance_candidates(plan_ref, top_variance_target):
     # Single bulk create for all candidates
     if candidates_to_create:
         AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
-        link_candidates_to_audit_records(plan_ref, variance_set, in_top80=False, selection_reason="High Abs Variance")
+        link_candidates_to_audit_records(plan_ref, variance_set, selection_reason="High Abs Variance")
 
     return variance_count_real
 
@@ -583,7 +582,6 @@ def generate_top_map_candidates(plan_ref, top_map_target):
                 sub_location_count=item["sub_location_count"],
                 tag_count=item["tag_count"],
                 coverage_pct=0,
-                in_top80=False,  # Not in top80, selected for high MAP price
                 selected_records=item["count_val"],
                 selection_reason="High MAP Price",
                 manual_override=0,
@@ -593,6 +591,6 @@ def generate_top_map_candidates(plan_ref, top_map_target):
     # Single bulk create for all candidates
     if candidates_to_create:
         AuditCandidate.objects.bulk_create(candidates_to_create, batch_size=1000)
-        link_candidates_to_audit_records(plan_ref, map_set, in_top80=False, selection_reason="High MAP Price")
+        link_candidates_to_audit_records(plan_ref, map_set, selection_reason="High MAP Price")
 
     return map_count_real

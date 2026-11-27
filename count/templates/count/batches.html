@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 {% block title %}Count Result Upload | PI Platform{% endblock %}
 {% block body %}
 <div class="page-heading">
@@ -42,18 +43,19 @@
       <td class="mut">{{ item.created_at|date:'Y-m-d H:i' }} · {{ item.created_by.username|default:'system' }}</td>
       <td>
         <div class="batch-row-actions">
-      {% if item.status == 'REVERSED' %}
-      <span>Reversed</span>
-      {% else %}
+
         <a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_batch' item.id %}">Open Detail</a>
         {% if item.status == 'Imported' %}
-        <a class="btn btn-sm btn-outline-danger" href="{% url 'count:count_batch_revoke' item.id %}">Reverse</a>
+        <button class="btn btn-sm btn-outline-danger" onclick='confirm_reverse({{ item.id }})'>Reverse</button>
         {% endif %}
-      {% endif %}
       </div></td>
     </tr>
     {% empty %}<tr><td colspan="9" class="mut">No {{ page_title }} batches yet.</td></tr>{% endfor %}
   </tbody></table></div>
 </section>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'count/batches.js' %}?v=1.0"></script>
 {% endblock %}

@@ -233,6 +233,7 @@ def count_batch_confirm(request, batch_id):
             batch_ref.status = "Imported"
             batch_ref.imported_count = len(new_records) + len(new_ex_records)
             batch_ref.updated_by = curr_user
+            batch_ref.updated_at = curr_time
             batch_ref.save(update_fields=["status", "imported_count", "updated_by", "updated_at"])
     except Exception as e:
         messages.error(request, f"Error importing count records. {clean_errors(e)}")

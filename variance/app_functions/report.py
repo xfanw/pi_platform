@@ -15,7 +15,7 @@ def get_live_var_context(curr_var_set):
         "cs_abs_qty": 0,
     }
 
-    if curr_var_set is None:
+    if not curr_var_set:
         return context
     cycle_name = curr_var_set.first().cycle.name
 

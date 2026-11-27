@@ -5,7 +5,7 @@
 <div class="page-heading"><div><h1>Audit Planning</h1><p class="page-sub">Set the audit scope and capacity, then let the system recommend count records for review before the sample is frozen.</p></div></div>
 
 {% if may_create %}
-<form method="post" class="audit-builder" id="audit-builder" action="{% url 'audit:audit_planning_create' %}">
+<form method="post" class="audit-builder" id="audit-builder" action="{% url 'audit:audit_planning_create' %}" onsubmit="show_loader(true)">
   {% csrf_token %}
   <section class="audit-step">
     <div class="step-number">1</div>
@@ -40,7 +40,8 @@
           </span></div>
           <div class="audit-exclude-tools">
           <input id="audit-exclude-keywords" placeholder="Exclude keywords, comma separated">
-          <button type="button" class="btn btn-sm btn-outline-danger" id="audit-exclude-apply">Exclude matches</button></div>
+          <button type="button" class="btn btn-sm btn-outline-danger fw-bold" id="audit-exclude-apply">Exclude matches</button></div>
+
           <div class="audit-checklist" id="audit-physical">
           {% for item in physical_list %}
           <label data-sap="{{ item.sap_code }}" >
@@ -60,7 +61,6 @@
         <div class='col-md-2'><label>Pages per Auditor</label><input class='form-control' type="number" min="1" name="pages_per_auditor" id="audit-pages" value="2" required></div>
         <div class='col-md-2'><label>Page Density</label>
         <select class='form-control' name="density" id="audit-density">
-          <option value="1">Test (1 rows)</option>
           <option value="30">Spacious (30 rows)</option>
           <option value="35" selected>Normal (35 rows)</option>
           <option value="39">Compact (39 rows)</option>

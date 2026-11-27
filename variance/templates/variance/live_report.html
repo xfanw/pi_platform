@@ -10,6 +10,17 @@
 </div>
 {% if is_closed %}<div class="flash warn">Closed PI · Read-only historical position. Count and variance remain available for review.</div>{% endif %}
 
+<div class="cards variance-kpis" id="varianceKpiCards">
+  <div class="kpi"><div class="lbl">TK Book Value</div><div class="val">${{ tk_book_value|floatformat:0|intcomma }}</div></div>
+  <div class="kpi green"><div class="lbl">TK Count Value</div><div class="val">${{ tk_count_value|floatformat:0|intcomma }}</div></div>
+  <div class="kpi amber"><div class="lbl">TK Net Variance</div><div class="val {% if tk_net_val < 0 %}neg{% endif %}">${{ tk_net_val|floatformat:0|intcomma }}</div></div>
+  <div class="kpi"><div class="lbl">TK Variance Accuracy</div><div class="val">{{ tk_net_acc|floatformat:1 }}%</div></div>
+  <div class="kpi"><div class="lbl">TK Abs. Variance</div><div class="val">${{ tk_abs_val|floatformat:0|intcomma }}</div></div>
+  <div class="kpi"><div class="lbl">TK Abs. Variance Accuracy</div><div class="val">{{ tk_abs_acc|floatformat:1 }}%</div></div>
+  <div class="kpi cs-kpi"><div class="lbl">CS Avg P/N Qty Accuracy</div><div class="val">{% if cs_avg_acc is not None %}{{ cs_avg_acc|floatformat:1 }}%{% else %}—{% endif %}</div></div>
+  <div class="kpi amber"><div class="lbl">CS Abs. Qty Variance</div><div class="val">{{ cs_abs_qty|floatformat:-4|intcomma }}</div></div>
+</div>
+
 <section class="card search-card variance-filter-card">
   <div class="search-title">Filter Variance</div>
   <form method="get" class="variance-filters">
@@ -54,18 +65,20 @@
     <button class='btn btn-sm btn-primary' type="submit">Apply</button>
     <a class="btn btn-sm btn-outline-primary" href="{% url 'variance:variance_live_report' %}">Clear</a>
   </form>
+  {% if has_search %}
+    <h2 class='mt-2'>Filtered Results</h2>
+    <div class="cards variance-kpis" id="varianceKpiCards">
+      <div class="kpi"><div class="lbl">TK Book Value</div><div class="val">${{ tk_book_value_filtered|floatformat:0|intcomma }}</div></div>
+      <div class="kpi green"><div class="lbl">TK Count Value</div><div class="val">${{ tk_count_value_filtered|floatformat:0|intcomma }}</div></div>
+      <div class="kpi amber"><div class="lbl">TK Net Variance</div><div class="val {% if tk_net_val_filtered < 0 %}neg{% endif %}">${{ tk_net_val_filtered|floatformat:0|intcomma }}</div></div>
+      <div class="kpi"><div class="lbl">TK Variance Accuracy</div><div class="val">{{ tk_net_acc_filtered|floatformat:1 }}%</div></div>
+      <div class="kpi"><div class="lbl">TK Abs. Variance</div><div class="val">${{ tk_abs_val_filtered|floatformat:0|intcomma }}</div></div>
+      <div class="kpi"><div class="lbl">TK Abs. Variance Accuracy</div><div class="val">{{ tk_abs_acc_filtered|floatformat:1 }}%</div></div>
+      <div class="kpi cs-kpi"><div class="lbl">CS Avg P/N Qty Accuracy</div><div class="val">{% if cs_avg_acc_filtered is not None %}{{ cs_avg_acc_filtered|floatformat:1 }}%{% else %}—{% endif %}</div></div>
+      <div class="kpi amber"><div class="lbl">CS Abs. Qty Variance</div><div class="val">{{ cs_abs_qty_filtered|floatformat:-4|intcomma }}</div></div>
+    </div>
+{% endif %}
 </section>
-
-<div class="cards variance-kpis" id="varianceKpiCards">
-  <div class="kpi"><div class="lbl">TK Book Value</div><div class="val">${{ tk_book_value|floatformat:0|intcomma }}</div></div>
-  <div class="kpi green"><div class="lbl">TK Count Value</div><div class="val">${{ tk_count_value|floatformat:0|intcomma }}</div></div>
-  <div class="kpi amber"><div class="lbl">TK Net Variance</div><div class="val {% if tk_net_val < 0 %}neg{% endif %}">${{ tk_net_val|floatformat:0|intcomma }}</div></div>
-  <div class="kpi"><div class="lbl">TK Variance Accuracy</div><div class="val">{{ tk_net_acc|floatformat:1 }}%</div></div>
-  <div class="kpi"><div class="lbl">TK Abs. Variance</div><div class="val">${{ tk_abs_val|floatformat:0|intcomma }}</div></div>
-  <div class="kpi"><div class="lbl">TK Abs. Variance Accuracy</div><div class="val">{{ tk_abs_acc|floatformat:1 }}%</div></div>
-  <div class="kpi cs-kpi"><div class="lbl">CS Avg P/N Qty Accuracy</div><div class="val">{% if cs_avg_acc is not None %}{{ cs_avg_acc|floatformat:1 }}%{% else %}—{% endif %}</div></div>
-  <div class="kpi amber"><div class="lbl">CS Abs. Qty Variance</div><div class="val">{{ cs_abs_qty|floatformat:-4|intcomma }}</div></div>
-</div>
 
 
 {% if can_decide and not is_closed %}

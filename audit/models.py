@@ -21,6 +21,7 @@ class AuditPlan(TimeStampedModel):
     pages_per_auditor = models.PositiveIntegerField()
     rows_per_page = models.PositiveIntegerField()
     target_count = models.PositiveIntegerField()
+
     value_pct = models.DecimalField(max_digits=5, decimal_places=2, default=85)
     map_pct = models.DecimalField(max_digits=5, decimal_places=2, default=10)
     variance_pct = models.DecimalField(max_digits=5, decimal_places=2, default=5)
@@ -28,6 +29,7 @@ class AuditPlan(TimeStampedModel):
     real_map_count = models.PositiveIntegerField(default=0)
     real_variance_count = models.PositiveIntegerField(default=0)
     real_total_count = models.PositiveIntegerField(default=0)
+
     status = models.CharField(max_length=24)  # Draft, In Process, Finalized, Submitted
     finalized_at = models.DateTimeField(null=True, blank=True)
     results_submitted_at = models.DateTimeField(null=True, blank=True)
@@ -57,10 +59,12 @@ class AuditCandidate(TimeStampedModel):
     map_price = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
     variance_value = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
     abs_variance = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES, default=0)
+
     count_records = models.PositiveIntegerField()
     location_count = models.PositiveIntegerField(default=0)
     sub_location_count = models.PositiveIntegerField(default=0)
     tag_count = models.PositiveIntegerField(default=0)
+
     coverage_pct = models.DecimalField(max_digits=7, decimal_places=4, default=0)
     in_top80 = models.BooleanField(default=False)
     selected_records = models.PositiveIntegerField(default=0)
