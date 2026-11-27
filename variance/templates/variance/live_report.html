@@ -112,9 +112,10 @@
       {% endif %}<th class="sticky-pn">P/N</th><th>Description</th><th>BU</th><th class="num">MAP$</th><th>Type</th>      
       
       {% for location in tk_locations %}<th class="num sap-head">{{ location.code }}<small>{{ location.department }} · TK</small></th>{% endfor %}
-      <th class="num total-col">TK Var Qty</th><th class="num total-col">TK Var Value</th><th class="num total-col">TK Abs Var</th>
+      {% if tk_locations %}<th class="num total-col">TK Var Qty</th><th class="num total-col">TK Var Value</th><th class="num total-col">TK Abs Var</th>{% endif %} 
       {% for location in cs_locations %}<th class="num sap-head cs-head">{{ location.code }}<small>{{ location.department }} · CS</small></th>{% endfor %}
-      <th class="num total-col cs-total">CS Var Qty</th><th class="num total-col cs-total">CS Abs Qty</th><th class="num total-col cs-total">CS Qty Accuracy</th><th>Resolution</th><th class="comment-col">Comments</th>
+      {% if cs_locations %}<th class="num total-col cs-total">CS Var Qty</th><th class="num total-col cs-total">CS Abs Qty</th><th class="num total-col cs-total">CS Qty Accuracy</th>{% endif %}
+      <th>Resolution</th><th class="comment-col">Comments</th>
     </tr></thead>
     <tbody>{% for row in current_page_obj %}
     <tr>
@@ -141,9 +142,11 @@
         {% endif %}
         </td>
       {% endfor %}
+      {% if tk_locations %}
       <td class="num total-col {% if row.tk_var_qty < 0 %}neg{% elif row.tk_var_qty > 0 %}pos{% endif %}">{{ row.tk_var_qty|floatformat:-4 }}</td>
       <td class="num total-col {% if row.tk_var_value < 0 %}neg{% elif row.tk_var_value > 0 %}pos{% endif %}">${{ row.tk_var_value|floatformat:2|intcomma }}</td>
       <td class="num total-col">${{ row.tk_abs_var|floatformat:2|intcomma }}</td>
+      {% endif %}
       {% for cell in row.cs_cells %}
         <td class="num">
         {% if cell == "-- --" %}
@@ -155,9 +158,11 @@
           {% endif %}
         {% endif %}</td>
       {% endfor %}
+      {% if cs_locations %}
       <td class="num total-col cs-total {% if row.cs_var_qty < 0 %}neg{% elif row.cs_var_qty > 0 %}pos{% endif %}">{{ row.cs_var_qty|floatformat:-4 }}</td>
       <td class="num total-col cs-total">{{ row.cs_abs_qty|floatformat:-4 }}</td>
       <td class="num total-col cs-total">{% if row.cs_accuracy is not None %}{{ row.cs_accuracy|floatformat:1 }}%{% else %}—{% endif %}</td>
+      {% endif %}
       <td><a class="resolution-chip {{ row.resolution_class }}" href="{% url 'variance:variance_by_part' %}?part_number={{ row.part.part_number|urlencode }}">{{ row.resolution_status }}</a></td>
       <td class="comment-col"><button type="button" class="variance-comment-bubble" title="View comments" onclick='show_comments("{{ row.part.part_number }}")'>💬</button></td>
     </tr>

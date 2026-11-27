@@ -59,6 +59,10 @@ def variance_live_report(request):
     has_search = False
 
     curr_var_set = CycleVariance.objects.filter(cycle=active_cycle, plant=plant)
+
+    tk_set = CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True, sap_location__inventory_type="FII_OWNED")
+
+    cs_set = CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True, sap_location__inventory_type="CONSIGNED")
     context.update(get_live_var_context(curr_var_set))
     if search:
         has_search = True
@@ -67,10 +71,14 @@ def variance_live_report(request):
     if selected_department:
         has_search = True
         curr_var_set = curr_var_set.filter(sap_department__icontains=selected_department)
+        tk_set = tk_set.filter(sap_location__department__icontains=selected_department)
+        cs_set = cs_set.filter(sap_location__department__icontains=selected_department)
         context["selected_department"] = selected_department
     if selected_sap:
         has_search = True
         curr_var_set = curr_var_set.filter(sap_code__icontains=selected_sap)
+        tk_set = tk_set.filter(sap_location__code__icontains=selected_sap)
+        cs_set = cs_set.filter(sap_location__code__icontains=selected_sap)
         context["selected_sap"] = selected_sap
     if selected_bu:
         has_search = True
@@ -80,7 +88,7 @@ def variance_live_report(request):
         has_search = True
         curr_var_set = curr_var_set.filter(sap_inventory_type__icontains=selected_type)
         context["selected_type"] = selected_type
-    if show_var_only != "all":
+    if show_var_only == "variance":
         has_search = True
         curr_var_set = curr_var_set.exclude(variance_quantity=0)
         context["show_all"] = False
@@ -88,15 +96,16 @@ def variance_live_report(request):
         context["show_all"] = True
 
     tk_locations = list(
-        CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True, sap_location__inventory_type="FII_OWNED")
-        .values(code=F("sap_location__code"), department=F("sap_location__department"))
-        .order_by("sap_location__department", "sap_location__code")
+        tk_set.values(code=F("sap_location__code"), department=F("sap_location__department")).order_by(
+            "sap_location__department", "sap_location__code"
+        )
     )
     context["tk_locations"] = tk_locations
+
     cs_locations = list(
-        CycleSAPLocation.objects.filter(cycle=active_cycle, is_active=True, sap_location__inventory_type="CONSIGNED")
-        .values(code=F("sap_location__code"), department=F("sap_location__department"))
-        .order_by("sap_location__department", "sap_location__code")
+        cs_set.values(code=F("sap_location__code"), department=F("sap_location__department")).order_by(
+            "sap_location__department", "sap_location__code"
+        )
     )
     context["cs_locations"] = cs_locations
     filtered_var_context = get_live_var_context(curr_var_set)
