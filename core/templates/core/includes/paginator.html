@@ -3,9 +3,9 @@
         <div class='col-md-3'>
             <div class='input-group'>
                 <div class='input-group-text border-0 bg-transparent'>Show:</div>
-                <input class='form-control' id='per_page_element' value='{{ per_page_element }}' style='max-width:4em !important'>
+                <input class='form-control' id='per_page_element' value='{{ per_page_element }}' onchange="change_page_elem(this.value)" style='max-width:4em !important'>
                 <div class='input-group-text border-0 bg-transparent'>Per Page</div>
-                <div class='input-group-text border-0 bg-transparent'><a href="?per_page_element={{current_page_obj.paginator.count}}" onclick="show_loader()">Show All</a></div>
+                <div class='input-group-text border-0 bg-transparent'><a id='show_all' href="#" onclick="change_page_elem({{ current_page_obj.paginator.count }})">Show All</a></div>
             </div>
         </div>
         <div class='col-md-9 text-end'>
@@ -66,8 +66,7 @@ function toPage(target) {
     window.location.replace(next_url);
 }
 
-$("#per_page_element").change(function () {
-    let target = $(this).val();
+function change_page_elem(target) {
     let current_url = window.location.href;
     let url_components = current_url.split("?");
     let next_url = "";
@@ -96,5 +95,5 @@ $("#per_page_element").change(function () {
     }
 
     window.location.replace(next_url);
-});
+}
 </script>

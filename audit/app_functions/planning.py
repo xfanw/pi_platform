@@ -144,6 +144,9 @@ def init_candidates(audit_plan, curr_user):
                 variance_value=var_ref.variance_value,
                 abs_variance=abs(var_ref.variance_value),
                 count_records=record_count,
+                location_count=AuditRecord.objects.filter(variance=var_ref).values("physical_location_snapshot").distinct().count(),
+                sub_location_count=AuditRecord.objects.filter(variance=var_ref).values("sub_location_snapshot").distinct().count(),
+                tag_count=AuditRecord.objects.filter(variance=var_ref).values("tag_snapshot").distinct().count(),
                 created_by=curr_user,
                 coverage_pct=0,
             )
@@ -255,11 +258,13 @@ def generate_top_80_candidates(plan_ref, target_count, top_80_target, curr_user)
 
     if partial_selected:
         partial_selected.refresh_from_db()
-        partial_selected.coverage_pct = partial_selected.selected_records / partial_selected.count_records * 100
+        partial_selected.coverage_pct = partial_count / partial_selected.count_records * 100
         partial_selected.save()
-        unselect_count = partial_selected.count_records - partial_selected.selected_records
+        unselect_count = partial_selected.count_records - partial_count
         if unselect_count:
-            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
+            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("-count_quantity_snapshot", "id")[
+                partial_count:
+            ]
             for record in update_set:
                 record.selected = False
             AuditRecord.objects.bulk_update(update_set, ["selected"])
@@ -306,11 +311,11 @@ def generate_top_variance_candidates(plan_ref, top_variance_target, curr_user):
 
     if partial_selected:
         partial_selected.refresh_from_db()
-        unselect_count = partial_selected.count_records - partial_selected.selected_records
-        partial_selected.coverage_pct = partial_selected.selected_records / partial_selected.count_records * 100
+        unselect_count = partial_selected.count_records - partial_count
+        partial_selected.coverage_pct = partial_count / partial_selected.count_records * 100
         partial_selected.save()
         if unselect_count:
-            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
+            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("-count_quantity_snapshot")[partial_count:]
             for record in update_set:
                 record.selected = False
             AuditRecord.objects.bulk_update(update_set, ["selected"])
@@ -353,11 +358,11 @@ def generate_top_map_candidates(plan_ref, top_map_target, curr_user):
 
     if partial_selected:
         partial_selected.refresh_from_db()
-        unselect_count = partial_selected.count_records - partial_selected.selected_records
-        partial_selected.coverage_pct = partial_selected.selected_records / partial_selected.count_records * 100
+        unselect_count = partial_selected.count_records - partial_count
+        partial_selected.coverage_pct = partial_count / partial_selected.count_records * 100
         partial_selected.save()
         if unselect_count:
-            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
+            update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("-count_quantity_snapshot")[partial_count:]
             for record in update_set:
                 record.selected = False
             AuditRecord.objects.bulk_update(update_set, ["selected"])
