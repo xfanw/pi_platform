@@ -88,7 +88,7 @@ def variance_live_report(request):
         has_search = True
         curr_var_set = curr_var_set.filter(sap_inventory_type__icontains=selected_type)
         context["selected_type"] = selected_type
-    if show_var_only == "variance":
+    if show_var_only != "all":
         has_search = True
         curr_var_set = curr_var_set.exclude(variance_quantity=0)
         context["show_all"] = False

@@ -2342,7 +2342,7 @@ td.desc {
     min-width: 240px;
 }
 .audit-candidate-wrap {
-    max-height: calc(100vh - 390px);
+    max-height: 70vh;
     overflow: auto;
 }
 .audit-candidate-table {

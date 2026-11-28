@@ -11,9 +11,9 @@
 {% if is_draft and can_confirm %}<form method="post" id="postBatchConfirmForm" action="{% url 'variance:post_batches_confirm' batch.id %}">{% csrf_token %}{% endif %}
 <section class="card post-batch-detail-card">
   <div class="table-section-head"><div><h2>Frozen Batch Lines</h2><span class="mut">Uncheck a line to return it to Needs Review when this batch is confirmed.</span></div></div>
-  <div class="scroll">
+  <div class="scroll audit-candidate-wrap">
   <table class="post-batch-lines">
-  <thead><tr>{% if is_draft and can_confirm %}<th>Post</th>{% endif %}<th>P/N</th><th>SAP Location</th><th>Type</th><th>Movement</th><th class="num">MAP$</th><th class="num">Variance Qty</th><th class="num">Variance Value</th><th>Result</th></tr>
+  <thead class='thead-sticky'><tr>{% if is_draft and can_confirm %}<th>Post</th>{% endif %}<th>P/N</th><th>SAP Location</th><th>Type</th><th>Movement</th><th class="num">MAP$</th><th class="num">Variance Qty</th><th class="num">Variance Value</th><th>Result</th></tr>
   </thead>
   <tbody>
   {% for line in batch_lines %}

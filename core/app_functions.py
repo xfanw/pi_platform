@@ -99,6 +99,6 @@ def get_paginated_obj(queryset_obj, request_page=1, per_page_element=17):
     context["current_page_obj"] = current_page_obj
     context["current_elided_page_range"] = current_elided_page_range
     context["per_page_element"] = per_page_element
-    context["is_pagination"] = True
+    context["is_pagination"] = True if paginator.num_pages > 1 else False
 
     return context

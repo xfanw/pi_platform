@@ -103,9 +103,8 @@
 
 <section class="card variance-report-card">
   <div class="table-section-head"><div><h2>Variance Detail</h2><span class="mut">{{ variance_row_count }} P/N(s) · all matching rows shown · <b>·</b> means a record exists with zero variance · <b>—</b> means no record</span></div></div>
-  <div class="variance-top-scroll" id="varianceTopScroll"><div></div></div>
-  <div class="variance-table-scroll" id="varianceTableScroll">
-  <table class="variance-pivot" id="variancePivot">
+  <div class="variance-table-scroll audit-candidate-wrap" id="varianceTableScroll">
+  <table class="variance-pivot thead-sticky" id="variancePivot">
     <thead><tr>
       {% if can_decide and not is_closed %}
       <th class="select-col"><input type="checkbox" id="varianceHeaderSelect" aria-label="Select all P/Ns"></th>
@@ -191,8 +190,10 @@
           </div>
         </div>
       </td>
-    </tr>{% endif %}{% empty %}<tr><td colspan="99" class="mut">No P/Ns match these filters. Choose “All P/Ns” to include zero-variance records.</td></tr>{% endfor %}</tbody>
-  </table></div>
+    </tr>{% endif %}{% empty %}<tr><td colspan="99" class="mut">No P/Ns match these filters. Choose “All P/Ns” to include zero-variance records.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
 </section>
 {% if can_decide and not is_closed %}</form>{% endif %}
 
@@ -200,28 +201,6 @@
 {% endblock %}
 {% block scripts %}<script>
 $(function () {
-  const $top = $('#varianceTopScroll');
-  const $body = $('#varianceTableScroll');
-  const $table = $('#variancePivot');
-
-  if ($top.length && $body.length && $table.length) {
-    const updateScrollWidth = function () {
-      $top.children().first().css('width', $table[0].scrollWidth + 'px');
-    };
-    let syncing = false;
-    const syncScroll = function ($source, $target) {
-      if (syncing) return;
-      syncing = true;
-      $target.scrollLeft($source.scrollLeft());
-      syncing = false;
-    };
-
-    updateScrollWidth();
-    $top.on('scroll', function () { syncScroll($top, $body); });
-    $body.on('scroll', function () { syncScroll($body, $top); });
-    $(window).on('resize', updateScrollWidth);
-  }
-
   const $checks = $('.variance-row-check:not(:disabled)');
   const $count = $('#varianceSelectedCount');
   const $header = $('#varianceHeaderSelect');

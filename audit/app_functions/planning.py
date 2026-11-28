@@ -229,6 +229,7 @@ def generate_top_80_candidates(plan_ref, target_count, top_80_target, curr_user)
             item.selected_records = partial_count
             item.updated_by = curr_user
             item.selection_reason += "Top 80% Value"
+            item.coverage_pct = 100
             book_set.append(item)
             temp_sum += partial_count
 
@@ -238,9 +239,10 @@ def generate_top_80_candidates(plan_ref, target_count, top_80_target, curr_user)
         for item in book_set:
             item.selected_records = item.count_records
             item.updated_by = curr_user
+            item.coverage_pct = 100
             item.selection_reason += "Top 80% Value"
         small_audit = True
-    AuditCandidate.objects.bulk_update(book_set, ["selected_records", "updated_by", "selection_reason"])
+    AuditCandidate.objects.bulk_update(book_set, ["selected_records", "updated_by", "selection_reason", "coverage_pct"])
     # Batch update selected records
     if book_set:
         # Build Q filter for all book_set items
@@ -253,6 +255,8 @@ def generate_top_80_candidates(plan_ref, target_count, top_80_target, curr_user)
 
     if partial_selected:
         partial_selected.refresh_from_db()
+        partial_selected.coverage_pct = partial_selected.selected_records / partial_selected.count_records * 100
+        partial_selected.save()
         unselect_count = partial_selected.count_records - partial_selected.selected_records
         if unselect_count:
             update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
@@ -283,12 +287,14 @@ def generate_top_variance_candidates(plan_ref, top_variance_target, curr_user):
         variance_set.append(item)
         temp_sum += partial_count
         item.selected_records = partial_count
+        item.coverage_pct = 100
+
         partial_selected = item
         item.selection_reason += "High Abs Variance"
         item.updated_by = curr_user
 
     variance_count_real = temp_sum
-    AuditCandidate.objects.bulk_update(variance_set, ["selected_records", "selection_reason", "updated_by"])
+    AuditCandidate.objects.bulk_update(variance_set, ["selected_records", "selection_reason", "updated_by", "coverage_pct"])
     # Batch update selected records
 
     q_filter = Q()
@@ -301,6 +307,8 @@ def generate_top_variance_candidates(plan_ref, top_variance_target, curr_user):
     if partial_selected:
         partial_selected.refresh_from_db()
         unselect_count = partial_selected.count_records - partial_selected.selected_records
+        partial_selected.coverage_pct = partial_selected.selected_records / partial_selected.count_records * 100
+        partial_selected.save()
         if unselect_count:
             update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
             for record in update_set:
@@ -331,11 +339,12 @@ def generate_top_map_candidates(plan_ref, top_map_target, curr_user):
         map_set.append(item)
         temp_sum += partial_count
         partial_selected = item
+        item.coverage_pct = 100
         item.selection_reason += "High Value"
         item.updated_by = curr_user
     map_count_real = temp_sum
 
-    AuditCandidate.objects.bulk_update(map_set, ["selected_records", "selection_reason", "updated_by"])
+    AuditCandidate.objects.bulk_update(map_set, ["selected_records", "selection_reason", "updated_by", "coverage_pct"])
 
     q_filter = Q()
     for item in map_set:
@@ -345,6 +354,8 @@ def generate_top_map_candidates(plan_ref, top_map_target, curr_user):
     if partial_selected:
         partial_selected.refresh_from_db()
         unselect_count = partial_selected.count_records - partial_selected.selected_records
+        partial_selected.coverage_pct = partial_selected.selected_records / partial_selected.count_records * 100
+        partial_selected.save()
         if unselect_count:
             update_set = AuditRecord.objects.filter(candidate=partial_selected).order_by("count_quantity_snapshot")[unselect_count:]
             for record in update_set:

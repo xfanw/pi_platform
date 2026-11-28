@@ -205,6 +205,26 @@ def audit_plan_detail(request, plan_id):
     context["available"] = plan_ref.records.count()
     context["difference"] = plan_ref.real_total_count - plan_ref.target_count
     context["required_pages"] = (plan_ref.target_count + plan_ref.rows_per_page - 1) // plan_ref.rows_per_page
+    get_data = request.GET
+    category = get_data.get("show", "selected")
+    search_val = get_data.get("search", "")
+    candidate_set = AuditCandidate.objects.filter(plan=plan_ref)
+    context["show"] = category
+    context["show"] = category
+    context["search"] = search_val
+    if category == "selected":
+        candidate_set = candidate_set.filter(selected_records__gt=0).order_by(
+            "coverage_pct", "-selection_reason", "book_value", "map_price"
+        )
+    elif category == "unselected":
+        candidate_set = candidate_set.filter(selected_records=0)
+    if search_val:
+        candidate_set = candidate_set.filter(
+            Q(part_number_snapshot__icontains=search_val)
+            | Q(description_snapshot__icontains=search_val)
+            | Q(sap_location__code__icontains=search_val)
+        )
+    context["candidates"] = candidate_set
     return render(request, "audit/plan_detail.html", context)
 
 

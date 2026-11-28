@@ -5,6 +5,7 @@
                 <div class='input-group-text border-0 bg-transparent'>Show:</div>
                 <input class='form-control' id='per_page_element' value='{{ per_page_element }}' style='max-width:4em !important'>
                 <div class='input-group-text border-0 bg-transparent'>Per Page</div>
+                <div class='input-group-text border-0 bg-transparent'><a href="?per_page_element={{current_page_obj.paginator.count}}" onclick="show_loader()">Show All</a></div>
             </div>
         </div>
         <div class='col-md-9 text-end'>
