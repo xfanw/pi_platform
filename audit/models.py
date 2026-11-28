@@ -30,7 +30,7 @@ class AuditPlan(TimeStampedModel):
     real_variance_count = models.PositiveIntegerField(default=0)
     real_total_count = models.PositiveIntegerField(default=0)
 
-    status = models.CharField(max_length=24)  # Draft, In Process, Finalized, Submitted
+    status = models.CharField(max_length=24)  # Draft, Finalized, In Process, Submitted
     finalized_at = models.DateTimeField(null=True, blank=True)
     results_submitted_at = models.DateTimeField(null=True, blank=True)
     row_version = models.PositiveBigIntegerField(default=1)
@@ -112,6 +112,7 @@ class AuditRecord(TimeStampedModel):
     auditor_name = models.CharField(max_length=160, blank=True)
     completed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="completed_audit_records")
     completed_at = models.DateTimeField(null=True, blank=True)
+    correction = models.JSONField(max_length=128, blank=True, null=True)
     # count_correction = models.OneToOneField(
     #     CountCorrection, null=True, blank=True, on_delete=models.CASCADE, related_name="audit_record"
     # )

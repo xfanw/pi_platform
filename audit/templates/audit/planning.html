@@ -104,10 +104,12 @@
     <td class="num">{{ item.real_total_count|default:0 }}</td>
     <td><span class="chip">{{ item.status }}</span></td>
     <td class="mut">{{ item.updated_at|date:"Y-m-d H:i" }}</td>
-    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'audit:audit_plan_detail' item.id %}">{% if item.status == 'Draft' %}Review{% else %}View{% endif %}</a>
+    <td><a class="btn btn-sm btn-outline-primary col-md-4" href="{% url 'audit:audit_plan_detail' item.id %}">{% if item.status == 'Draft' %}Review{% else %}View{% endif %}</a>
 
   {% if item.status != 'Draft' %}
-    <a class="btn btn-sm btn-primary" href="{% url 'audit:audit_input' item.id %}">Start Input</a>
+    <a class="btn btn-sm btn-primary col-md-4" href="{% url 'audit:audit_result' item.id %}">
+    {% if item.status == 'Submitted' %}Review Results{% elif item.status == 'In Progress' %}Continue Audit{% else %}Start Audit{% endif %}
+    </a>
   {% endif %}
     </td>
   </tr>

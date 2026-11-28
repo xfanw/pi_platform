@@ -34,7 +34,7 @@
     <form method="post" enctype="multipart/form-data" class="frow compact-form" action="{% url 'site_setting:sub_location_file_upload' %}">{% csrf_token %}
       <div class="file-field"><label>Completed .xlsx</label><input type="file" name="sub_loc_file" accept=".xlsx" required></div>
       <button class="btn btn-primary" type="submit">Upload</button>
-      <a class="btn btn-outline-primary" href="{% url 'site_setting:sub_location_template_download' %}">Download Template</a>
+      <a class="btn btn-outline-success" href="{% url 'site_setting:sub_location_template_download' %}">Download Template</a>
     </form>
     <p class="mut">Additive import: existing Plant Master rows are reused, but only rows present in this workbook are added to the current PI. Rows omitted from the workbook remain in Plant Master and are not valid for this PI.</p>
   </div>

@@ -40,7 +40,7 @@
       {% csrf_token %}
       <div><label>Completed template (.xlsx)</label><input type="file" name="ex_part_file" accept=".xlsx" required></div>
       <button class='btn btn-sm btn-primary' type="submit">Upload &amp; Validate</button>
-      <a class="btn btn-sm btn-outline-primary" href="{% url 'cycles:ex_part_template_download' %}">Download template</a>
+      <a class="btn btn-sm btn-outline-success" href="{% url 'cycles:ex_part_template_download' %}">Download template</a>
     </form>
     <p class="mut">Use ALL in the SAP Location column to exclude a P/N in every SAP Location. Confirming an upload replaces the current exclusions.</p>
   </div>

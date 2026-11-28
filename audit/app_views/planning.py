@@ -1,5 +1,5 @@
 from audit.app_functions.planning import generate_audit_records, init_candidates, regenerate_candidates
-from audit.models import AuditPlan
+from audit.models import AuditPlan, AuditRecord
 from core._imports_for_views import *
 from cycles.app_models.cycle_models import CyclePhysicalLocation, CycleSAPLocation
 from count.models import CountRecord
@@ -174,7 +174,7 @@ def audit_planning_create(request):
 
 
 @login_required
-def audit_input(request, plan_id):
+def audit_result(request, plan_id):
     curr_user = request.user
     context = get_basic_info(request)
     plant = context["plant_ref"]
@@ -191,6 +191,7 @@ def audit_input(request, plan_id):
     if not audit_plan:
         messages.error(request, "Audit Plan not found.")
         return redirect("audit:audit_planning")
-    context["audit_plan"] = audit_plan
+    context["plan"] = audit_plan
+    context["pending"] = AuditRecord.objects.filter(audit_plan=audit_plan, result_status="Pending").count()
 
-    return render(request, "audit/audit_input.html", context)
+    return render(request, "audit/audit_results.html", context)

@@ -48,7 +48,7 @@
       {% csrf_token %}
       <input type="file" name="workbook" accept=".xlsx" required>
       <button class='btn btn-primary' type="submit">Upload &amp; Preview</button>
-      <a class="btn btn-outline-primary" href="{% url 'site_setting:counter_template_download' %}">Download Template</a>
+      <a class="btn btn-outline-success" href="{% url 'site_setting:counter_template_download' %}">Download Template</a>
     </form>
     <div class="bulk-rule-pane">
       <div class="pane-title">How access is created</div>

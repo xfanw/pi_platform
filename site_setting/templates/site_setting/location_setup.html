@@ -33,7 +33,7 @@
     <form method="post" enctype="multipart/form-data" class="frow compact-form" action="{% url 'site_setting:location_file_upload' %}">
       {% csrf_token %}
       <div class="file-field"><label>Completed .xlsx</label><input type="file" name="location_file" accept=".xlsx" required></div>
-      <button type="submit" class="btn btn-primary">Upload</button><a class="btn btn-outline-primary" href="{% url 'site_setting:location_template_download' %}">Download Template</a>
+      <button type="submit" class="btn btn-primary">Upload</button><a class="btn btn-outline-success" href="{% url 'site_setting:location_template_download' %}">Download Template</a>
     </form>
     <p class="mut">The template needs only SAP Location and Physical Location. Existing master rows are never overwritten and are reused in the current PI when their SAP Location is in scope.</p>
   </div>

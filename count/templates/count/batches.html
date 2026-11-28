@@ -26,7 +26,7 @@
     <div><label>Completed .xlsx</label><input type="file" name="file" accept=".xlsx" required></div>
     <div class="grow"><label>Batch note <span class="optional">optional</span></label><input name="note" maxlength="500" placeholder="Shift, department, source file or interface reference"></div>
     <button type="submit" class="btn btn-sm btn-primary">Upload</button>
-    <a class="btn btn-sm btn-outline-primary" href="{% url 'count:count_template_download' %}">Download Template</a>
+    <a class="btn btn-sm btn-outline-success" href="{% url 'count:count_template_download' %}">Download Template</a>
   </form>
   <p class="mut">Every accepted row receives its own Count Record ID. Unknown P/Ns go to Pending Station. Loading the same file again creates a new batch, so <b class="text-danger fw-bold">REVERSE</b> an incorrect batch before reloading it.</p>
 </section>

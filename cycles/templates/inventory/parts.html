@@ -35,7 +35,7 @@
       {% csrf_token %}
       <div><label>Completed template (.xlsx)</label><input type="file" name="part_file" accept=".xlsx" required></div>
       <button class='btn btn-sm btn-primary' type="submit">Upload &amp; Validate</button>
-      <a class="btn btn-sm btn-outline-primary" href="{% url 'cycles:part_template_download' %}">Download template</a>
+      <a class="btn btn-sm btn-outline-success" href="{% url 'cycles:part_template_download' %}">Download template</a>
     </form>
     <p class="mut">Replacement is blocked after Count Results exist. A successful replacement also clears the current SAP Book and exclusions.</p>
   </div>

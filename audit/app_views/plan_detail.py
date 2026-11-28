@@ -202,14 +202,35 @@ def audit_plan_finalize(request, plan_id):
         messages.error(request, "Audit Plan not found.")
         return redirect("audit:audit_planning")
 
-    if request.method == "POST":
-        action = request.POST.get("action")
-        if action == "finalize":
-            try:
-                audit_plan.status = "Finalized"
-                audit_plan.save()
-                messages.success(request, f"Audit Plan '{audit_plan.name}' finalized successfully.")
-            except Exception as e:
-                messages.error(request, f"An error occurred: {str(e)}")
+    record_set = AuditRecord.objects.filter(plan_id=plan_id, selected=True).order_by(
+        "sap_location__inventory_type",
+        "sap_location__department",
+        "sap_location__code",
+        "physical_location_snapshot",
+        "sub_location_snapshot",
+        "tag_number_snapshot",
+    )
+    rows_per_page = audit_plan.rows_per_page
+    page_per_person = audit_plan.pages_per_auditor
+    temp_auditor = 1
+    temp_page = 1
+    temp_row = 1
+    for record in record_set:
+        record.page_number = temp_page
+        record.auditor_number = temp_auditor
+        record.save()
+        temp_row += 1
+        if temp_row > rows_per_page:
+            temp_row = 1
+            temp_page += 1
+            if temp_page > page_per_person:
+                temp_page = 1
+                temp_auditor += 1
 
+    # Update the total number of auditors used in the plan
+    audit_plan.auditor_number = temp_auditor
+    audit_plan.updated_by = curr_user
+    audit_plan.status = "Finalized"
+    audit_plan.save()
+    AuditRecord.objects.bulk_update(record_set, ["page_number", "auditor_number"])
     return redirect("audit:audit_plan_detail", plan_id=plan_id)

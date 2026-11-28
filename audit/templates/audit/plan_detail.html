@@ -5,8 +5,8 @@
 {% block body %}
 <div class="audit-title-row"><div><a href="{% url 'audit:audit_planning' %}">← Audit Planning</a><h1>{{ audit_plan.name }}</h1><p class="page-sub">{{ audit_plan.department.name }} · {{ audit_plan.get_status_display }} · generated selection remains editable until Finalize.</p></div>
 <div class="frow">{% if audit_plan.status != 'Draft' %}
-  <a class="btn btn-sm btn-outline-primary" href="{% url 'core:home' %}">Audit Sheet Excel</a>
-  <a class="btn btn-sm btn-primary" href="{% url 'core:home' %}">View Audit Results</a>{% endif %}
+  <a class="btn btn-sm btn-outline-success" href="{% url 'core:home' %}">Audit Sheet Excel</a>
+  <a class="btn btn-sm btn-primary" href="{% url 'audit:audit_result' audit_plan.id %}">View Audit Results</a>{% endif %}
 </div></div>
 
 <div class="cards audit-status-cards">
@@ -32,8 +32,8 @@
     <button class='btn btn-sm btn-primary' type="submit">Regenerate</button>
   </form>
   <div class="audit-rule-note"><b>Why selected?</b><div><span>Top 80% Value</span><strong>Cumulative book-value population by SAP Location.</strong></div><div><span>High Value</span><strong>Highest remaining MAP$.</strong></div><div><span>High Abs Variance</span><strong>Largest remaining absolute variance value.</strong></div></div>
-  <form method="post" onsubmit="return confirm('Finalize and freeze these Audit Records?');">
-  {% csrf_token %}<input type="hidden" name="action" value="finalize">
+  <form method="post" action="{% url 'audit:audit_plan_finalize' audit_plan.id %}">
+  {% csrf_token %}
   <button class='btn btn-sm btn-primary' type="submit">Finalize &amp; Build Audit Sheet</button></form>
 </section>
 {% endif %}

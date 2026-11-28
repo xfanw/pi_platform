@@ -1,0 +1,114 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Audit Results | PI Platform{% endblock %}
+{% block body %}
+<div class="page-heading audit-title-row">
+  <div>
+    <h1>Audit Results</h1>
+    <p class="page-sub"><a href="{% url 'audit:audit_plan_detail' plan.id %}">{{ plan.name }}</a> · {{ plan.department.name }}</p>
+  </div>
+  <div class="frow">
+    <a class="btn btn-outline-success" href="{% url 'core:home' %}">Audit Sheet Excel</a>
+    <a class="btn btn-primary" href="{% url 'core:home' %}">Audit Accuracy</a>
+    {% comment %} <a class="btn ghost" href="{% url 'audit:audit-workbook' plan.plan_id %}">Audit Sheet Excel</a>
+    <a class="btn ghost" href="{% url 'audit:audit-accuracy' %}">Audit Accuracy</a> {% endcomment %}
+  </div>
+</div>
+
+<div class="cards audit-result-kpis">
+  <div class="kpi"><div class="lbl">Completion</div><div class="val">{{ completion_pct|floatformat:1 }}%</div><div class="sub">{{ completed }} of {{ metrics.total }} records</div></div>
+  <div class="kpi"><div class="lbl">Pending</div><div class="val {% if pending %}warn-text{% endif %}">{{ pending }}</div><div class="sub">Not reviewed yet</div></div>
+  <div class="kpi"><div class="lbl">Correct</div><div class="val">{{ metrics.correct }}</div><div class="sub">Verified without exception</div></div>
+  <div class="kpi"><div class="lbl">Errors Found</div><div class="val {% if metrics.errors %}neg{% endif %}">{{ metrics.errors }}</div><div class="sub">Review under Audit Corrections</div></div>
+  <div class="kpi"><div class="lbl">Record Accuracy</div><div class="val">{% if metrics.record_accuracy is not None %}{{ metrics.record_accuracy|floatformat:2 }}%{% else %}—{% endif %}</div><div class="sub">Unable / not counted excluded</div></div>
+</div>
+<div class="audit-progress"><i style="width:{{ completion_pct|floatformat:2 }}%"></i></div>
+
+{% if plan.status == 'Submitted' %}
+<div class="audit-submit-bar locked"><div><b>Audit Results Submitted</b><span>Results are read-only. Audit Corrections remain in their separate approval workflow.</span></div><span class="chip">Locked</span></div>
+{% elif pending == 0 %}
+<form method="post" class="audit-submit-bar ready">{% csrf_token %}
+  <input type="hidden" name="action" value="submit"><input type="hidden" name="page" value="{{ selected_page }}"><input type="hidden" name="row_version" value="{{ plan.row_version }}">
+  <div><b>All records have a result</b><span>You may submit this plan in batches during entry; final submission locks the complete plan.</span></div>
+  <button type="submit" {% if not may_submit %}disabled{% endif %} onclick="return confirm('Submit and lock all Audit Results for this plan?');">Submit Audit Results</button>
+</form>
+{% else %}
+<div class="audit-submit-bar"><div><b>{{ pending }} record(s) still Pending</b><span>Complete pages in batches or save individual exceptions below.</span></div><button type="button" disabled>Submit Audit Results</button></div>
+{% endif %}
+
+<section class="card">
+  <div class="table-section-head"><div><h2>Pages</h2><span class="mut">Select one or more pages, mark pending rows Correct, then enter only the exceptions.</span></div></div>
+  {% if may_submit and plan.status != 'Submitted' %}
+  <form method="post" id="mark-pages-form">{% csrf_token %}<input type="hidden" name="action" value="mark_pages"><input type="hidden" name="page" value="{{ selected_page }}">
+    <div class="audit-page-select-head"><span>Choose page(s) to complete</span><div><button class="text-action" type="button" onclick="setChecks('page_numbers', true)">Select all</button><button class="text-action" type="button" onclick="setChecks('page_numbers', false)">Unselect all</button></div></div>
+    <div class="audit-page-grid">
+      {% for page in page_summaries %}
+      <label class="audit-page-tile {% if page.complete == page.total %}complete{% elif page.complete %}partial{% endif %} {% if selected_page == page.page_number|stringformat:'s' %}on{% endif %}">
+        <input type="checkbox" name="page_numbers" value="{{ page.page_number }}">
+        <b>Page {{ page.page_number }} {% if page.complete == page.total %}<em>Complete</em>{% elif page.complete %}<em>Partial</em>{% endif %}</b>
+        <span>Auditor {{ page.auditor_number }}</span><small>{{ page.complete }}/{{ page.total }} complete{% if page.errors %} · {{ page.errors }} error{% endif %}</small>
+        <a href="?page={{ page.page_number }}">View</a>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="audit-page-action"><div><b>Batch-fill selected pages</b><span>Only records still Pending are changed. Existing errors and completed rows are preserved.</span></div><input name="auditor_name" placeholder="Auditor name (optional)"><button type="submit">Mark Pending Rows Correct</button></div>
+  </form>
+  {% else %}
+  <div class="audit-page-grid">
+    {% for page in page_summaries %}<a class="audit-page-tile {% if page.complete == page.total %}complete{% elif page.complete %}partial{% endif %} {% if selected_page == page.page_number|stringformat:'s' %}on{% endif %}" href="?page={{ page.page_number }}"><b>Page {{ page.page_number }}</b><span>Auditor {{ page.auditor_number }}</span><small>{{ page.complete }}/{{ page.total }} complete{% if page.errors %} · {{ page.errors }} error{% endif %}</small></a>{% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="card search-card">
+  <form method="get" class="frow">
+    <div><label>Page</label><select name="page">{% for page in page_summaries %}<option value="{{ page.page_number }}" {% if selected_page == page.page_number|stringformat:'s' %}selected{% endif %}>Page {{ page.page_number }} · Auditor {{ page.auditor_number }}</option>{% endfor %}</select></div>
+    <div><label>Result</label><select name="status"><option value="">All Results</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="field-grow"><label>Search across all pages</label><input type="search" name="search" value="{{ search }}" placeholder="P/N, tag, location or sub-location"></div>
+    <button class='btn btn-sm btn-primary' type="submit">Apply</button>{% if search or status_filter %}<a class="btn ghost" href="?page={{ selected_page }}">Clear</a>{% endif %}
+  </form>
+  {% if search %}<p class="mut">Showing matches across the whole Audit Plan. Clear search to return to Page {{ selected_page }}.</p>{% endif %}
+</section>
+
+<section class="card audit-result-card">
+  <div class="scroll"><table class="audit-result-table"><thead><tr><th>Page</th><th>SAP</th><th>Location</th><th>Sub Location</th><th>Tag</th><th>Part Number</th><th class="num">Count Qty</th><th>Audit Result</th><th class="num">Audit Qty</th><th>Error Type</th><th>Correct P/N</th><th>Auditor</th><th>Comment</th><th>Correction</th><th>Save</th></tr></thead><tbody>
+  {% for item in rows %}
+  <tr class="{% if item.result_status == 'ERROR' %}result-error{% elif item.result_status == 'CORRECT' %}result-correct{% endif %}">
+    <td>{{ item.page_number }}</td><td><span class="chip">{{ item.sap_location_code }}</span></td><td>{{ item.physical_location_snapshot|default:"—" }}</td><td>{{ item.sub_location_snapshot|default:"—" }}</td><td class="mono">{{ item.tag_number_snapshot|default:"—" }}</td><td><b>{{ item.part_number_snapshot }}</b></td><td class="num">{{ item.count_quantity_snapshot|floatformat:-4 }}</td>
+    {% if may_submit and plan.status != 'RESULTS_SUBMITTED' %}
+    <td><select name="result_status" form="result-{{ item.audit_record_id }}" class="result-status" data-row="{{ item.audit_record_id }}">{% for value,label in status_choices %}<option value="{{ value }}" {% if item.result_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+    <td><input class="audit-qty" type="number" step="any" name="audit_quantity" form="result-{{ item.audit_record_id }}" value="{% if item.audit_quantity is not None %}{{ item.audit_quantity }}{% endif %}"></td>
+    <td><select name="error_type" form="result-{{ item.audit_record_id }}" class="error-type"><option value="">—</option>{% for value,label in error_choices %}<option value="{{ value }}" {% if item.error_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+    <td><input name="corrected_part_number" form="result-{{ item.audit_record_id }}" value="{{ item.corrected_part.part_number|default:'' }}" placeholder="Required for wrong P/N"></td>
+    <td><input name="auditor_name" form="result-{{ item.audit_record_id }}" value="{{ item.auditor_name }}" placeholder="Name"></td><td><input name="comment" form="result-{{ item.audit_record_id }}" value="{{ item.result_comment }}" placeholder="Exception detail"></td>
+    <td>{% if item.count_correction %}<span class="chip audit-adjusted">{{ item.count_correction.get_status_display }}</span>{% else %}—{% endif %}</td>
+    <td><form method="post" id="result-{{ item.audit_record_id }}">{% csrf_token %}<input type="hidden" name="action" value="save_record"><input type="hidden" name="page" value="{{ selected_page }}"><input type="hidden" name="audit_record_id" value="{{ item.audit_record_id }}"><input type="hidden" name="row_version" value="{{ item.row_version }}"><button class="btn tiny audit-save-result" type="submit">Save</button></form></td>
+    {% else %}
+    <td>{{ item.get_result_status_display }}</td><td class="num">{{ item.audit_quantity|floatformat:-4|default:"—" }}</td><td>{{ item.get_error_type_display|default:"—" }}</td><td>{{ item.corrected_part.part_number|default:"—" }}</td><td>{{ item.auditor_name|default:"—" }}</td><td>{{ item.result_comment|default:"—" }}</td><td>{% if item.count_correction %}<span class="chip audit-adjusted">{{ item.count_correction.get_status_display }}</span>{% else %}—{% endif %}</td><td>Locked</td>
+    {% endif %}
+  </tr>
+  {% empty %}<tr><td colspan="15" class="mut">No Audit Records match this view.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.result-status').forEach(select => {
+  const refresh = () => {
+    const formId = 'result-' + select.dataset.row;
+    const errorType = document.querySelector('[name="error_type"][form="' + formId + '"]');
+    const quantity = document.querySelector('[name="audit_quantity"][form="' + formId + '"]');
+    const corrected = document.querySelector('[name="corrected_part_number"][form="' + formId + '"]');
+    const isError = select.value === 'ERROR';
+    errorType.required = isError;
+    quantity.required = isError;
+    corrected.required = isError && errorType.value === 'WRONG_PART_NUMBER';
+  };
+  select.addEventListener('change', refresh);
+  const formId = 'result-' + select.dataset.row;
+  document.querySelector('[name="error_type"][form="' + formId + '"]').addEventListener('change', refresh);
+  refresh();
+});
+</script>
+{% endblock %}
